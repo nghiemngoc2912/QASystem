@@ -1,0 +1,144 @@
+﻿@model QASystem.Models.User
+@using QASystem.Models
+@using QASystem.Controllers
+@{
+    ViewData["Title"] = "Profile";
+    var recentActivities = ViewBag.RecentActivities as List<AccountController.Activity>;
+    var userQuestions = ViewBag.UserQuestions as List<Question>;
+}
+
+<div class="container mt-4">
+    <h2>@Model.UserName's Profile</h2>
+    @if (TempData["Success"] != null)
+    {
+        <div class="alert alert-success" role="alert">
+            @TempData["Success"]
+        </div>
+    }
+    @if (TempData["Error"] != null)
+    {
+        <div class="alert alert-danger" role="alert">
+            @TempData["Error"]
+        </div>
+    }
+
+    <div class="row">
+        <div class="col-md-4 text-center">
+            <img src="@(Model.AvatarUrl ?? "/images/default-avatar.png")" alt="Avatar" class="rounded-circle mb-3" style="width: 150px; height: 150px;" />
+            <h4>@Model.UserName</h4>
+            <p class="text-muted">@Model.Email</p>
+        </div>
+        <div class="col-md-8">
+            <div class="card shadow-sm mb-4">
+                <div class="card-body">
+                    <h5 class="card-title">Update Profile</h5>
+                    <form asp-controller="Account" asp-action="UpdateProfile" method="post" enctype="multipart/form-data">
+                        <div class="mb-3">
+                            <label class="form-label">Username</label>
+                            <input type="text" class="form-control" value="@Model.UserName" disabled />
+                        </div>
+                        <div class="mb-3">
+                            <label for="email" class="form-label">Email</label>
+                            <input type="email" name="email" id="email" class="form-control" value="@Model.Email" required />
+                        </div>
+                        <div class="mb-3">
+                            <label for="avatar" class="form-label">Upload New Avatar (optional)</label>
+                            <input type="file" name="avatar" id="avatar" class="form-control" accept="image/*" />
+                        </div>
+                        <div class="gap-3">
+                            <button type="submit" class="btn btn-outline-success">Save Changes</button>
+                            <button type="button" class="btn btn-outline-dark" data-bs-toggle="modal" data-bs-target="#changePasswordModal">
+                                Change Password
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Các bài viết của người dùng -->
+    <div class="mt-4">
+        <h3>My Posts</h3>
+        @if (userQuestions != null && userQuestions.Any())
+        {
+            <div class="row">
+                @foreach (var question in userQuestions)
+                {
+                    <div class="col-md-6 mb-3">
+                        <div class="card shadow-sm">
+                            <div class="card-body">
+                                <h5 class="card-title">
+                                    <a asp-controller="Questions" asp-action="Details" asp-route-id="@question.QuestionId" class="text-decoration-none">
+                                        @question.Title
+                                    </a>
+                                </h5>
+                                <p class="text-muted small">Posted on @question.CreatedAt.ToString()</p>
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+        else
+        {
+            <p class="text-muted">You haven't posted any questions yet.</p>
+        }
+    </div>
+
+    <!-- Hoạt động gần đây -->
+    <div class="mt-4">
+        <h3>Recent Activities</h3>
+        @if (recentActivities != null && recentActivities.Any())
+        {
+            <ul class="list-group">
+                @foreach (var activity in recentActivities)
+                {
+                    <li class="list-group-item">
+                        <strong>@activity.Type:</strong>
+                        @activity.Content
+                        <span class="text-muted small">(@activity.CreatedAt.ToString())</span>
+                        @if (activity.Id > 0)
+                        {
+                            <a asp-controller="Questions" asp-action="Details" asp-route-id="@activity.Id" class="ms-2">View</a>
+                        }
+                    </li>
+                }
+            </ul>
+        }
+        else
+        {
+            <p class="text-muted">No recent activities.</p>
+        }
+    </div>
+
+    <!-- Modal Change Password -->
+    <div class="modal fade" id="changePasswordModal" tabindex="-1" aria-labelledby="changePasswordModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="changePasswordModalLabel">Change Password</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form asp-action="ChangePassword" method="post">
+                        @Html.AntiForgeryToken()
+                        <div class="mb-3">
+                            <label for="currentPassword" class="form-label">Current Password</label>
+                            <input type="password" name="currentPassword" id="currentPassword" class="form-control" required />
+                        </div>
+                        <div class="mb-3">
+                            <label for="newPassword" class="form-label">New Password</label>
+                            <input type="password" name="newPassword" id="newPassword" class="form-control" required />
+                        </div>
+                        <div class="mb-3">
+                            <label for="confirmPassword" class="form-label">Confirm New Password</label>
+                            <input type="password" name="confirmPassword" id="confirmPassword" class="form-control" required />
+                        </div>
+                        <button type="submit" class="btn btn-primary w-100">Save Changes</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
