@@ -56,5 +56,74 @@ namespace QASystem.Controllers
 
             return View(question);
         }
+
+        [HttpPost]
+        public async Task<IActionResult> Vote(int? questionId, int? answerId, int voteType)
+        {
+            var user = await _userManager.GetUserAsync(User);
+            var vote = await _context.Votes
+                .FirstOrDefaultAsync(v => v.UserId == user.Id && (questionId.HasValue ? v.QuestionId == questionId : v.AnswerId == answerId));
+
+            if (vote == null)
+            {
+                vote = new Vote
+                {
+                    UserId = user.Id,
+                    QuestionId = questionId,
+                    AnswerId = answerId,
+                    VoteType = voteType
+                };
+                _context.Votes.Add(vote);
+            }
+            else
+            {
+                vote.VoteType = voteType;
+            }
+
+            await _context.SaveChangesAsync();
+
+            // Tính lại vote count
+            var voteCount = await _context.Votes
+                .Where(v => (questionId.HasValue ? v.QuestionId == questionId : v.AnswerId == answerId))
+                .SumAsync(v => v.VoteType);
+
+            // Gửi thông báo SignalR
+            await _hubContext.Clients.Group($"Question_{(questionId ?? (await _context.Answers.FindAsync(answerId)).QuestionId)}")
+                .SendAsync("ReceiveVoteUpdate", answerId, voteCount);
+
+            return RedirectToAction("Details", new { id = questionId ?? (await _context.Answers.FindAsync(answerId)).QuestionId });
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> Answer(int questionId, string content, IFormFile image)
+        {
+            var user = await _userManager.GetUserAsync(User);
+            var answer = new Answer
+            {
+                QuestionId = questionId,
+                UserId = user.Id,
+                Content = content,
+                CreatedAt = DateTime.UtcNow
+            };
+
+            if (image != null)
+            {
+                var filePath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot/uploads", image.FileName);
+                using (var stream = new FileStream(filePath, FileMode.Create))
+                {
+                    await image.CopyToAsync(stream);
+                }
+                answer.ImageUrl = "/uploads/" + image.FileName;
+            }
+
+            _context.Answers.Add(answer);
+            await _context.SaveChangesAsync();
+
+            // Gửi thông báo SignalR
+            await _hubContext.Clients.Group($"Question_{questionId}")
+                .SendAsync("ReceiveAnswer", user.UserName, content);
+
+            return RedirectToAction("Details", new { id = questionId });
+        }
     }
 }
