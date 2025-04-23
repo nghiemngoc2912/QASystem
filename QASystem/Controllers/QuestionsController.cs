@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Identity;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
@@ -124,6 +125,85 @@ namespace QASystem.Controllers
                 .SendAsync("ReceiveAnswer", user.UserName, content);
 
             return RedirectToAction("Details", new { id = questionId });
+        }
+
+        [HttpPost]
+        [Authorize]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Report(int? questionId, int? answerId, string reason)
+        {
+            if (!questionId.HasValue && !answerId.HasValue)
+            {
+                TempData["Error"] = "Must provide either questionId or answerId.";
+                return RedirectToAction("Details", new { id = questionId ?? (await _context.Answers.FindAsync(answerId))?.QuestionId ?? 0 });
+            }
+
+            if (string.IsNullOrEmpty(reason))
+            {
+                TempData["Error"] = "Reason for reporting is required.";
+                return RedirectToAction("Details", new { id = questionId ?? (await _context.Answers.FindAsync(answerId)).QuestionId });
+            }
+
+            var user = await _userManager.GetUserAsync(User);
+            var existingReport = await _context.Reports
+                .FirstOrDefaultAsync(r => r.UserId == user.Id &&
+                                         (questionId.HasValue ? r.QuestionId == questionId : r.AnswerId == answerId));
+
+            if (existingReport != null)
+            {
+                TempData["Error"] = "You have already reported this content.";
+                return RedirectToAction("Details", new { id = questionId ?? (await _context.Answers.FindAsync(answerId)).QuestionId });
+            }
+
+            var report = new Report
+            {
+                UserId = user.Id,
+                QuestionId = questionId,
+                AnswerId = answerId,
+                Reason = reason,
+                ReportedAt = DateTime.Now
+            };
+
+            _context.Reports.Add(report);
+            await _context.SaveChangesAsync();
+
+
+            if (questionId.HasValue)
+            {
+                var question = await _context.Questions.Include(q => q.User).FirstOrDefaultAsync(q => q.QuestionId == questionId);
+                if (question != null)
+                {
+                    await _emailService.SendEmailAsync(
+                        question.User.Email,
+                        "Your Question Has Been Reported",
+                        $"Dear {question.User.UserName},<br/><br/>" +
+                        $"Your question titled '<strong>{question.Title}</strong>' has been reported for the following reason: {reason}.<br/>" +
+                        "Please review our community guidelines. If you have any questions, contact our support team.<br/><br/>" +
+                        "Regards,<br/>QASystem Team"
+                    );
+                }
+            }
+            else if (answerId.HasValue)
+            {
+                var answer = await _context.Answers.Include(a => a.User).FirstOrDefaultAsync(a => a.AnswerId == answerId);
+                if (answer != null)
+                {
+                    await _emailService.SendEmailAsync(
+                        answer.User.Email,
+                        "Your Answer Has Been Reported",
+                        $"Dear {answer.User.UserName},<br/><br/>" +
+                        $"Your answer to a question has been reported for the following reason: {reason}.<br/>" +
+                        "Please review our community guidelines. If you have any questions, contact our support team.<br/><br/>" +
+                        "Regards,<br/>QASystem Team"
+                    );
+                }
+            }
+
+
+
+            TempData["Success"] = "Your report has been submitted.";
+            var redirectId = questionId ?? (await _context.Answers.FindAsync(answerId)).QuestionId;
+            return RedirectToAction("Details", new { id = redirectId });
         }
     }
 }
