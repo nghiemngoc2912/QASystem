@@ -1,0 +1,575 @@
+﻿@model QASystem.Models.Question
+@{
+    ViewData["Title"] = Model.Title;
+    var questionVoteCount = ViewBag.QuestionVoteCount ?? 0;
+    var answerVoteCounts = ViewBag.AnswerVoteCounts;
+    int currentPage = ViewBag.CurrentPage;
+    int totalPages = ViewBag.TotalPages;
+    int totalAnswers = ViewBag.TotalAnswers;
+    var currentUserId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+}
+
+<div class="row">
+    <div class="col-md-12">
+        <!-- Thông tin câu hỏi -->
+        @if (Model.IsDisabled)
+        {
+            @if (User.IsInRole("Admin") || User.IsInRole("Moderator"))
+            {
+                <div class="card shadow-sm mb-4">
+                    <div class="card-body d-flex">
+                        <div class="text-center me-3">
+                            <form asp-action="Vote" method="post" class="mb-2">
+                                <input type="hidden" name="questionId" value="@Model.QuestionId" />
+                                <button name="voteType" value="1" class="btn btn-sm @(User.Identity.IsAuthenticated ? "btn-outline-success" : "btn-outline-secondary disabled")" @(User.Identity.IsAuthenticated ? "" : "disabled")>
+                                    <i class="bi bi-caret-up-fill"></i>
+                                </button>
+                            </form>
+                            <span class="d-block fw-bold vote-count" data-question-id="@Model.QuestionId">@questionVoteCount</span>
+                            <form asp-action="Vote" method="post">
+                                <input type="hidden" name="questionId" value="@Model.QuestionId" />
+                                <button name="voteType" value="-1" class="btn btn-sm @(User.Identity.IsAuthenticated ? "btn-outline-danger" : "btn-outline-secondary disabled")" @(User.Identity.IsAuthenticated ? "" : "disabled")>
+                                    <i class="bi bi-caret-down-fill"></i>
+                                </button>
+                            </form>
+                        </div>
+                        <div class="flex-grow-1">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div class="d-flex align-items-center mb-2">
+                                    <img src="@(Model.User?.AvatarUrl ?? "/images/default-avatar.png")" alt="Avatar" class="rounded-circle me-2" style="width: 40px; height: 40px;" />
+                                    <p class="text-muted mb-0">Posted by <strong>@Model.User?.UserName</strong> on @Model.CreatedAt.ToString()</p>
+                                </div>
+                                <div class="mt-2">
+                                    @if (Model.IsDisabled)
+                                    {
+                                        <span class="badge bg-danger me-1">Disabled</span>
+                                    }
+                                    @if (User.Identity.IsAuthenticated)
+                                    {
+                                        @if (!Model.IsDisabled && Model.UserId.ToString() != currentUserId)
+                                        {
+                                            <button type="button" class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#reportModal"
+                                                    data-id="@Model.QuestionId" data-type="question">
+                                                <i class="bi bi-exclamation-triangle"></i> Report
+                                            </button>
+                                        }
+                                        @if (Model.UserId.ToString() == currentUserId && !Model.IsDisabled)
+                                        {
+                                            <button type="button" class="btn btn-sm btn-outline-primary ms-2" data-bs-toggle="modal" data-bs-target="#editQuestionModal">
+                                                <i class="bi bi-pencil-square"></i> Edit
+                                            </button>
+                                        }
+                                    }
+                                </div>
+                            </div>
+
+                            <h2 class="card-title">@Model.Title</h2>
+                            <div class="card-text">@Html.Raw(Model.Content)</div>
+                            @if (!string.IsNullOrEmpty(Model.ImageUrl))
+                            {
+                                <div class="mt-2">
+                                    <img src="@Model.ImageUrl" alt="Question Image" class="img-fluid" style="max-height: 300px;" />
+                                </div>
+                            }
+                            <div>
+                                @foreach (var tag in Model.Tags)
+                                {
+                                    <span class="badge bg-warning me-1">@tag.Name</span>
+                                }
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Danh sách câu trả lời -->
+                <h4 class="mb-3">Answers (<span id="total-answers">@totalAnswers</span>)</h4>
+                <div id="answers-container">
+                    @if (Model.Answers.Any())
+                    {
+                        @foreach (var answer in Model.Answers)
+                        {
+                            <div class="card shadow-sm mb-3" data-answer-id="@answer.AnswerId">
+                                <div class="card-body d-flex">
+                                    <div class="text-center me-3">
+                                        <form asp-controller="Questions" asp-action="Vote" method="post" class="mb-2">
+                                            <input type="hidden" name="answerId" value="@answer.AnswerId" />
+                                            <button type="submit" name="voteType" value="1" class="btn btn-sm @(User.Identity.IsAuthenticated ? "btn-outline-success" : "btn-outline-secondary disabled")" @(User.Identity.IsAuthenticated ? "" : "disabled")>
+                                                <i class="bi bi-caret-up-fill"></i>
+                                            </button>
+                                        </form>
+                                        <span class="d-block fw-bold vote-count" data-answer-id="@answer.AnswerId">@(answerVoteCounts != null && answerVoteCounts.ContainsKey(answer.AnswerId) ? answerVoteCounts[answer.AnswerId] : 0)</span>
+                                        <form asp-controller="Questions" asp-action="Vote" method="post">
+                                            <input type="hidden" name="answerId" value="@answer.AnswerId" />
+                                            <button type="submit" name="voteType" value="-1" class="btn btn-sm @(User.Identity.IsAuthenticated ? "btn-outline-danger" : "btn-outline-secondary disabled")" @(User.Identity.IsAuthenticated ? "" : "disabled")>
+                                                <i class="bi bi-caret-down-fill"></i>
+                                            </button>
+                                        </form>
+                                    </div>
+                                    <div class="flex-grow-1">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <div class="d-flex align-items-center mb-2">
+                                                <img src="@(answer.User?.AvatarUrl ?? "/images/default-avatar.png")" alt="Avatar" class="rounded-circle me-2" style="width: 40px; height: 40px;" />
+                                                <p class="text-muted mb-0">Answered by <strong>@answer.User?.UserName</strong> on @answer.CreatedAt.ToString()</p>
+                                            </div>
+                                            <div class="mt-2">
+                                                @if (answer.IsDisabled)
+                                                {
+                                                    <span class="badge bg-danger me-1">Disabled</span>
+                                                }
+                                                @if (User.Identity.IsAuthenticated)
+                                                {
+                                                    @if (!answer.IsDisabled && answer.UserId.ToString() != currentUserId)
+                                                    {
+                                                        <button type="button" class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#reportModal"
+                                                                data-id="@answer.AnswerId" data-type="answer">
+                                                            <i class="bi bi-exclamation-triangle"></i> Report
+                                                        </button>
+                                                    }
+                                                    @if (answer.UserId.ToString() == currentUserId && !answer.IsDisabled)
+                                                    {
+                                                        <button type="button" class="btn btn-sm btn-outline-primary ms-2" data-bs-toggle="modal" data-bs-target="#editAnswerModal_@answer.AnswerId">
+                                                            <i class="bi bi-pencil-square"></i> Edit
+                                                        </button>
+                                                    }
+                                                }
+                                            </div>
+                                        </div>
+                                        <div class="card-text">@Html.Raw(answer.Content)</div>
+                                        @if (!string.IsNullOrEmpty(answer.ImageUrl))
+                                        {
+                                            <div class="mt-2">
+                                                <img src="@answer.ImageUrl" alt="Answer Image" class="img-fluid" style="max-height: 200px;" />
+                                            </div>
+                                        }
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Modal chỉnh sửa câu trả lời -->
+                            <div class="modal fade" id="editAnswerModal_@answer.AnswerId" tabindex="-1" aria-labelledby="editAnswerModalLabel_@answer.AnswerId" aria-hidden="true">
+                                <div class="modal-dialog">
+                                    <div class="modal-content">
+                                        <div class="modal-header">
+                                            <h5 class="modal-title" id="editAnswerModalLabel_@answer.AnswerId">Edit Answer</h5>
+                                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                        </div>
+                                        <div class="modal-body">
+                                            <form asp-controller="Questions" asp-action="EditAnswer" method="post" enctype="multipart/form-data">
+                                                <input type="hidden" name="answerId" value="@answer.AnswerId" />
+                                                <input type="hidden" name="questionId" value="@Model.QuestionId" />
+                                                <div class="mb-3">
+                                                    <label for="content_@answer.AnswerId" class="form-label">Content</label>
+                                                    <textarea name="content" id="content_@answer.AnswerId" class="form-control" rows="5">@answer.Content</textarea>
+                                                </div>
+                                                <div class="mb-3">
+                                                    <label for="image_@answer.AnswerId" class="form-label">Upload New Image (optional)</label>
+                                                    <input type="file" name="image" id="image_@answer.AnswerId" class="form-control" accept="image/*" />
+                                                    @if (!string.IsNullOrEmpty(answer.ImageUrl))
+                                                    {
+                                                        <p>Current Image: <img src="@answer.ImageUrl" alt="Current Image" class="img-fluid mt-2" style="max-height: 100px;" /></p>
+                                                    }
+                                                </div>
+                                                <button type="submit" class="btn btn-primary w-100">Save Changes</button>
+                                            </form>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        }
+                        <nav aria-label="Answers pagination">
+                            <ul class="pagination justify-content-center">
+                                <li class="page-item @(currentPage == 1 ? "disabled" : "")">
+                                    <a class="page-link" asp-action="Details" asp-route-id="@Model.QuestionId" asp-route-page="@(currentPage - 1)">Previous</a>
+                                </li>
+                                @for (int i = 1; i <= totalPages; i++)
+                                {
+                                    <li class="page-item @(i == currentPage ? "active" : "")">
+                                        <a class="page-link" asp-action="Details" asp-route-id="@Model.QuestionId" asp-route-page="@i">@i</a>
+                                    </li>
+                                }
+                                <li class="page-item @(currentPage == totalPages ? "disabled" : "")">
+                                    <a class="page-link" asp-action="Details" asp-route-id="@Model.QuestionId" asp-route-page="@(currentPage + 1)">Next</a>
+                                </li>
+                            </ul>
+                        </nav>
+                    }
+                    else
+                    {
+                        <p class="text-muted">No answers yet.</p>
+                    }
+                </div>
+            }
+            else
+            {
+                <p class="text-muted">This question has been disabled by an admin.</p>
+            }
+        }
+        else
+        {
+            <div class="card shadow-sm mb-4">
+                <div class="card-body d-flex">
+                    <div class="text-center me-3">
+                        <form asp-action="Vote" method="post" class="mb-2">
+                            <input type="hidden" name="questionId" value="@Model.QuestionId" />
+                            <button name="voteType" value="1" class="btn btn-sm @(User.Identity.IsAuthenticated ? "btn-outline-success" : "btn-outline-secondary disabled")" @(User.Identity.IsAuthenticated ? "" : "disabled")>
+                                <i class="bi bi-caret-up-fill"></i>
+                            </button>
+                        </form>
+                        <span class="d-block fw-bold vote-count" data-question-id="@Model.QuestionId">@questionVoteCount</span>
+                        <form asp-action="Vote" method="post">
+                            <input type="hidden" name="questionId" value="@Model.QuestionId" />
+                            <button name="voteType" value="-1" class="btn btn-sm @(User.Identity.IsAuthenticated ? "btn-outline-danger" : "btn-outline-secondary disabled")" @(User.Identity.IsAuthenticated ? "" : "disabled")>
+                                <i class="bi bi-caret-down-fill"></i>
+                            </button>
+                        </form>
+                    </div>
+                    <div class="flex-grow-1">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div class="d-flex align-items-center mb-2">
+                                <img src="@(Model.User?.AvatarUrl ?? "/images/default-avatar.png")" alt="Avatar" class="rounded-circle me-2" style="width: 40px; height: 40px;" />
+                                <p class="text-muted mb-0">Posted by <strong>@Model.User?.UserName</strong> on @Model.CreatedAt.ToString()</p>
+                            </div>
+                            <div class="mt-2">
+                                @if (User.Identity.IsAuthenticated)
+                                {
+                                    @if (Model.UserId.ToString() != currentUserId)
+                                    {
+                                        <button type="button" class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#reportModal"
+                                                data-id="@Model.QuestionId" data-type="question">
+                                            <i class="bi bi-exclamation-triangle"></i> Report
+                                        </button>
+                                    }
+                                    @if (Model.UserId.ToString() == currentUserId)
+                                    {
+                                        <button type="button" class="btn btn-sm btn-outline-primary ms-2" data-bs-toggle="modal" data-bs-target="#editQuestionModal">
+                                            <i class="bi bi-pencil-square"></i> Edit
+                                        </button>
+                                    }
+                                }
+                            </div>
+                        </div>
+
+                        <h2 class="card-title">@Model.Title</h2>
+                        <div class="card-text">@Html.Raw(Model.Content)</div>
+                        @if (!string.IsNullOrEmpty(Model.ImageUrl))
+                        {
+                            <div class="mt-2">
+                                <img src="@Model.ImageUrl" alt="Question Image" class="img-fluid" style="max-height: 300px;" />
+                            </div>
+                        }
+                        @functions {
+                        string GetRandomColor()
+                        {
+                            Random rand = new Random();
+                            int r = rand.Next(50, 255);
+                            int g = rand.Next(50, 255);
+                            int b = rand.Next(50, 255);
+                            return $"rgb({r},{g},{b})";
+                        }
+                    }
+                    <div>
+                        @foreach (var tag in Model.Tags)
+                            {
+                                var colorStyle = $"background-color: {GetRandomColor()}; color: white;";
+                                <span class="badge me-1" style="@colorStyle">@tag.Name</span>
+                            }
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Modal chỉnh sửa câu hỏi -->
+            <div class="modal fade" id="editQuestionModal" tabindex="-1" aria-labelledby="editQuestionModalLabel" aria-hidden="true">
+                <div class="modal-dialog">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title" id="editQuestionModalLabel">Edit Question</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                            <form asp-controller="Questions" asp-action="EditQuestion" method="post" enctype="multipart/form-data">
+                                <input type="hidden" name="questionId" value="@Model.QuestionId" />
+                                <div class="mb-3">
+                                    <label for="title" class="form-label">Title</label>
+                                    <input type="text" name="title" id="title" class="form-control" value="@Model.Title" required />
+                                </div>
+                                <div class="mb-3">
+                                    <label for="content" class="form-label">Content</label>
+                                    <textarea name="content" id="content" class="form-control" rows="5">@Model.Content</textarea>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="image" class="form-label">Upload New Image (optional)</label>
+                                    <input type="file" name="image" id="image" class="form-control" accept="image/*" />
+                                    @if (!string.IsNullOrEmpty(Model.ImageUrl))
+                                    {
+                                        <p>Current Image: <img src="@Model.ImageUrl" alt="Current Image" class="img-fluid mt-2" style="max-height: 100px;" /></p>
+                                    }
+                                </div>
+                                <button type="submit" class="btn btn-primary w-100">Save Changes</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Danh sách câu trả lời -->
+            <h4 class="mb-3">Answers (<span id="total-answers">@totalAnswers</span>)</h4>
+            <div id="answers-container">
+                @if (Model.Answers.Any(a => !a.IsDisabled))
+                {
+                    @foreach (var answer in Model.Answers.Where(a => !a.IsDisabled))
+                    {
+                        <div class="card shadow-sm mb-3" data-answer-id="@answer.AnswerId">
+                            <div class="card-body d-flex">
+                                <div class="text-center me-3">
+                                    <form asp-controller="Questions" asp-action="Vote" method="post" class="mb-2">
+                                        <input type="hidden" name="answerId" value="@answer.AnswerId" />
+                                        <button type="submit" name="voteType" value="1" class="btn btn-sm @(User.Identity.IsAuthenticated ? "btn-outline-success" : "btn-outline-secondary disabled")" @(User.Identity.IsAuthenticated ? "" : "disabled")>
+                                            <i class="bi bi-caret-up-fill"></i>
+                                        </button>
+                                    </form>
+                                    <span class="d-block fw-bold vote-count" data-answer-id="@answer.AnswerId">@(answerVoteCounts != null && answerVoteCounts.ContainsKey(answer.AnswerId) ? answerVoteCounts[answer.AnswerId] : 0)</span>
+                                    <form asp-controller="Questions" asp-action="Vote" method="post">
+                                        <input type="hidden" name="answerId" value="@answer.AnswerId" />
+                                        <button type="submit" name="voteType" value="-1" class="btn btn-sm @(User.Identity.IsAuthenticated ? "btn-outline-danger" : "btn-outline-secondary disabled")" @(User.Identity.IsAuthenticated ? "" : "disabled")>
+                                            <i class="bi bi-caret-down-fill"></i>
+                                        </button>
+                                    </form>
+                                </div>
+                                <div class="flex-grow-1">
+                                    <div class="d-flex justify-content-between align-items-start">
+                                        <div class="d-flex align-items-center mb-2">
+                                            <img src="@(answer.User?.AvatarUrl ?? "/images/default-avatar.png")" alt="Avatar" class="rounded-circle me-2" style="width: 40px; height: 40px;" />
+                                            <p class="text-muted mb-0">Answered by <strong>@answer.User?.UserName</strong> on @answer.CreatedAt.ToString()</p>
+                                        </div>
+                                        <div class="mt-2">
+                                            @if (User.Identity.IsAuthenticated)
+                                            {
+                                                @if (answer.UserId.ToString() != currentUserId)
+                                                {
+                                                    <button type="button" class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#reportModal"
+                                                            data-id="@answer.AnswerId" data-type="answer">
+                                                        <i class="bi bi-exclamation-triangle"></i> Report
+                                                    </button>
+                                                }
+                                                @if (answer.UserId.ToString() == currentUserId)
+                                                {
+                                                    <button type="button" class="btn btn-sm btn-outline-primary ms-2" data-bs-toggle="modal" data-bs-target="#editAnswerModal_@answer.AnswerId">
+                                                        <i class="bi bi-pencil-square"></i> Edit
+                                                    </button>
+                                                }
+                                            }
+                                        </div>
+                                    </div>
+
+                                    <div class="card-text">@Html.Raw(answer.Content)</div>
+                                    @if (!string.IsNullOrEmpty(answer.ImageUrl))
+                                    {
+                                        <div class="mt-2">
+                                            <img src="@answer.ImageUrl" alt="Answer Image" class="img-fluid" style="max-height: 200px;" />
+                                        </div>
+                                    }
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Modal chỉnh sửa câu trả lời -->
+                        <div class="modal fade" id="editAnswerModal_@answer.AnswerId" tabindex="-1" aria-labelledby="editAnswerModalLabel_@answer.AnswerId" aria-hidden="true">
+                            <div class="modal-dialog">
+                                <div class="modal-content">
+                                    <div class="modal-header">
+                                        <h5 class="modal-title" id="editAnswerModalLabel_@answer.AnswerId">Edit Answer</h5>
+                                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                    </div>
+                                    <div class="modal-body">
+                                        <form asp-controller="Questions" asp-action="EditAnswer" method="post" enctype="multipart/form-data">
+                                            <input type="hidden" name="answerId" value="@answer.AnswerId" />
+                                            <input type="hidden" name="questionId" value="@Model.QuestionId" />
+                                            <div class="mb-3">
+                                                <label for="content_@answer.AnswerId" class="form-label">Content</label>
+                                                <textarea name="content" id="content_@answer.AnswerId" class="form-control" rows="5">@answer.Content</textarea>
+                                            </div>
+                                            <div class="mb-3">
+                                                <label for="image_@answer.AnswerId" class="form-label">Upload New Image (optional)</label>
+                                                <input type="file" name="image" id="image_@answer.AnswerId" class="form-control" accept="image/*" />
+                                                @if (!string.IsNullOrEmpty(answer.ImageUrl))
+                                                {
+                                                    <p>Current Image: <img src="@answer.ImageUrl" alt="Current Image" class="img-fluid mt-2" style="max-height: 100px;" /></p>
+                                                }
+                                            </div>
+                                            <button type="submit" class="btn btn-primary w-100">Save Changes</button>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                    <nav aria-label="Answers pagination">
+                        <ul class="pagination justify-content-center">
+                            <li class="page-item @(currentPage == 1 ? "disabled" : "")">
+                                <a class="page-link" asp-action="Details" asp-route-id="@Model.QuestionId" asp-route-page="@(currentPage - 1)">Previous</a>
+                            </li>
+                            @for (int i = 1; i <= totalPages; i++)
+                            {
+                                <li class="page-item @(i == currentPage ? "active" : "")">
+                                    <a class="page-link" asp-action="Details" asp-route-id="@Model.QuestionId" asp-route-page="@i">@i</a>
+                                </li>
+                            }
+                            <li class="page-item @(currentPage == totalPages ? "disabled" : "")">
+                                <a class="page-link" asp-action="Details" asp-route-id="@Model.QuestionId" asp-route-page="@(currentPage + 1)">Next</a>
+                            </li>
+                        </ul>
+                    </nav>
+                }
+                else
+                {
+                    <p class="text-muted">No answers yet.</p>
+                }
+            </div>
+        }
+
+        <!-- Form thêm câu trả lời -->
+        @if (User.Identity.IsAuthenticated)
+        {
+            <div class="card shadow-sm mt-4">
+                <div class="card-body">
+                    <h5 class="card-title">Your Answer</h5>
+                    <form asp-action="Answer" method="post" enctype="multipart/form-data">
+                        <input type="hidden" name="questionId" value="@Model.QuestionId" />
+                        <div class="mb-3">
+                            <input type="text" id="answerTrigger" class="form-control" placeholder="Click here to write your answer" />
+                        </div>
+                        <div id="answerFields" style="display: none;">
+                            <div class="mb-3">
+                                <textarea name="content" id="answerContent" class="form-control" placeholder="Write your answer here"></textarea>
+                            </div>
+                            <div class="mb-3">
+                                <label for="image" class="form-label">Upload Image (optional)</label>
+                                <input type="file" name="image" id="image" class="form-control" accept="image/*" />
+                            </div>
+                            <button type="submit" class="btn btn-primary">Post Answer</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        }
+
+        <!-- Modal Báo cáo -->
+        <div class="modal fade" id="reportModal" tabindex="-1" aria-labelledby="reportModalLabel" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="reportModalLabel">Report Content</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <form asp-controller="Questions" asp-action="Report" method="post">
+                            <input type="hidden" name="questionId" id="reportQuestionId" />
+                            <input type="hidden" name="answerId" id="reportAnswerId" />
+                            <div class="mb-3">
+                                <label for="reason" class="form-label">Reason for reporting</label>
+                                <textarea name="reason" id="reason" class="form-control" rows="3" placeholder="Please explain why you are reporting this content" required></textarea>
+                            </div>
+                            <button type="submit" class="btn btn-danger w-100">Submit Report</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/8.0.0/signalr.min.js"></script>
+    <script>
+        document.getElementById('answerTrigger').addEventListener('focus', function () {
+            var answerFields = document.getElementById('answerFields');
+            if (answerFields.style.display === 'none') {
+                document.getElementById('answerTrigger').style.display = 'none';
+                answerFields.style.display = 'block';
+                tinymce.init({
+                    selector: '#answerContent',
+                    height: 300,
+                    plugins: 'advlist autolink lists link image charmap preview anchor searchreplace visualblocks code fullscreen insertdatetime media table paste code help wordcount',
+                    toolbar: 'undo redo | formatselect | bold italic underline | alignleft aligncenter alignright alignjustify | bullist numlist outdent indent | link image | code preview',
+                    menubar: false,
+                    content_style: 'body { font-family:Helvetica,Arial,sans-serif; font-size:14px }'
+                });
+            }
+        });
+
+        document.querySelectorAll('[data-bs-target="#reportModal"]').forEach(button => {
+            button.addEventListener('click', function () {
+                var id = this.getAttribute('data-id');
+                var type = this.getAttribute('data-type');
+                var questionIdField = document.getElementById('reportQuestionId');
+                var answerIdField = document.getElementById('reportAnswerId');
+
+                if (type === 'question') {
+                    questionIdField.value = id;
+                    answerIdField.value = '';
+                } else if (type === 'answer') {
+                    questionIdField.value = '';
+                    answerIdField.value = id;
+                }
+            });
+        });
+
+        // SignalR connection
+        const connection = new signalR.HubConnectionBuilder()
+            .withUrl("/questionHub")
+            .configureLogging(signalR.LogLevel.Information)
+            .build();
+
+        connection.on("ReceiveAnswer", (userName, content) => {
+            const answersContainer = document.getElementById("answers-container");
+            const totalAnswers = document.getElementById("total-answers");
+            const newAnswer = `
+                        <div class="card shadow-sm mb-3">
+                            <div class="card-body d-flex">
+                                <div class="text-center me-3">
+                                    <form asp-controller="Questions" asp-action="Vote" method="post" class="mb-2">
+                                        <input type="hidden" name="answerId" value="0" />
+                                        <button type="submit" name="voteType" value="1" class="btn btn-sm btn-outline-success">
+                                            <i class="bi bi-caret-up-fill"></i>
+                                        </button>
+                                    </form>
+                                    <span class="d-block fw-bold vote-count" data-answer-id="0">0</span>
+                                    <form asp-controller="Questions" asp-action="Vote" method="post">
+                                        <input type="hidden" name="answerId" value="0" />
+                                        <button type="submit" name="voteType" value="-1" class="btn btn-sm btn-outline-danger">
+                                            <i class="bi bi-caret-down-fill"></i>
+                                        </button>
+                                    </form>
+                                </div>
+                                <div class="flex-grow-1">
+                                    <div class="d-flex justify-content-between align-items-start">
+                                        <div class="d-flex align-items-center mb-2">
+                                            <img src="/images/default-avatar.png" alt="Avatar" class="rounded-circle me-2" style="width: 40px; height: 40px;" />
+                                            <p class="text-muted mb-0">Answered by <strong>${userName}</strong> on ${new Date().toLocaleString()}</p>
+                                        </div>
+                                    </div>
+                                    <div class="card-text">${content}</div>
+                                </div>
+                            </div>
+                        </div>`;
+            answersContainer.insertAdjacentHTML("afterbegin", newAnswer);
+            totalAnswers.textContent = parseInt(totalAnswers.textContent) + 1;
+        });
+
+        connection.on("ReceiveVoteUpdate", (answerId, voteCount) => {
+            const voteElements = document.querySelectorAll(".vote-count");
+            voteElements.forEach(element => {
+                const id = answerId ? element.getAttribute("data-answer-id") : element.getAttribute("data-question-id");
+                if ((answerId && id == answerId) || (!answerId && id == @Model.QuestionId)) {
+                    element.textContent = voteCount;
+                }
+            });
+        });
+
+        connection.start().then(() => {
+            connection.invoke("JoinQuestionGroup", @Model.QuestionId).catch(err => console.error(err));
+        }).catch(err => console.error(err));
+    </script>
+}
