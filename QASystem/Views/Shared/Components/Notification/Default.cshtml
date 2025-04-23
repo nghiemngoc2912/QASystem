@@ -1,0 +1,63 @@
+﻿@model QASystem.ViewModels.NotificationViewModel
+
+@* Badge với số unread *@
+<a class="nav-link dropdown-toggle" href="#" id="notificationDropdown" role="button"
+    data-bs-toggle="dropdown" aria-expanded="false">
+    Notifications
+    <span class="badge bg-danger">@Model.UnreadCount</span>
+</a>
+
+<ul class="dropdown-menu dropdown-menu-end" aria-labelledby="notificationDropdown" style="margin-right: 85px;">
+    @if (!Model.Notifications.Any())
+    {
+        <li class="dropdown-item text-muted">No notifications</li>
+    }
+    else
+    {
+        var unread = Model.Notifications.Where(n => !n.IsRead).ToList();
+        var read = Model.Notifications.Where(n => n.IsRead).ToList();
+
+        @if (unread.Any())
+        {
+            <li class="dropdown-header">Unread</li>
+            @foreach (var n in unread)
+            {
+                <li>
+                    <a class="dropdown-item fw-bold"
+                        asp-controller="Notifications"
+                        asp-action="MarkAsRead"
+                        asp-route-id="@n.NotificationId"
+                        asp-route-questionId="@(n.QuestionId ?? n.Answer.QuestionId)">
+                        @n.Message
+                        <small class="text-muted d-block">@n.CreatedAt.ToLocalTime().ToString("g")</small>
+                    </a>
+                </li>
+            }
+            <li><hr class="dropdown-divider" /></li>
+        }
+
+        @if (read.Any())
+        {
+            <li class="dropdown-header">Read</li>
+            @foreach (var n in read)
+            {
+                <li>
+                    <a class="dropdown-item text-muted"
+                        asp-controller="Notifications"
+                        asp-action="MarkAsRead"
+                        asp-route-id="@n.NotificationId"
+                        asp-route-questionId="@(n.QuestionId ?? n.Answer.QuestionId)">
+                        @n.Message
+                        <small class="text-muted d-block">@n.CreatedAt.ToLocalTime().ToString("g")</small>
+                    </a>
+                </li>
+            }
+        }
+    }
+    <li><hr class="dropdown-divider" /></li>
+    <li>
+        <a class="dropdown-item text-center" asp-controller="Notifications" asp-action="Index">
+            View all notifications
+        </a>
+    </li>
+</ul>

@@ -120,6 +120,29 @@ namespace QASystem.Controllers
             _context.Answers.Add(answer);
             await _context.SaveChangesAsync();
 
+
+            //Add notification
+            var question = await _context.Questions
+                .Include(q => q.User)
+                .FirstOrDefaultAsync(q => q.QuestionId == questionId);
+
+            // Notify chủ question (nếu muốn)
+            if (question != null && question.UserId != user.Id)
+            {
+                var notifyQ = new Notification
+                {
+                    Type = NotificationType.CommentOnQuestion,
+                    QuestionId = questionId,
+                    UserId = question.UserId,
+                    Message = $"{user.UserName} đã bình luận {content} .",
+                    IsRead = false,
+                    CreatedAt = DateTime.UtcNow
+                };
+                _context.Notifications.Add(notifyQ);
+            }
+
+            await _context.SaveChangesAsync();
+
             // Gửi thông báo SignalR
             await _hubContext.Clients.Group($"Question_{questionId}")
                 .SendAsync("ReceiveAnswer", user.UserName, content);
@@ -274,5 +297,7 @@ namespace QASystem.Controllers
             await _context.SaveChangesAsync();
             return RedirectToAction("Details", new { id = questionId });
         }
+
+
     }
 }

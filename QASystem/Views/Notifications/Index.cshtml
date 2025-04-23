@@ -1,0 +1,69 @@
+﻿@model IEnumerable<QASystem.Models.Notification>
+
+@{
+    ViewData["Title"] = "Thông Báo";
+}
+
+<h1>@ViewData["Title"]</h1>
+
+<table class="table table-bordered">
+    <thead>
+        <tr>
+            <th>Thời Gian</th>
+            <th>Nội Dung</th>
+            <th>Trạng Thái</th>
+            <th>Hành Động</th>
+        </tr>
+    </thead>
+    <tbody>
+        @if (!Model.Any())
+        {
+            <tr>
+                <td colspan="4" class="text-center">Không có thông báo nào.</td>
+            </tr>
+        }
+        else
+        {
+            foreach (var notification in Model)
+            {
+                <tr>
+                    <td>@notification.CreatedAt.ToString("dd/MM/yyyy HH:mm")</td>
+                    <td>@notification.Message</td>
+                    <td>
+                        @if (notification.IsRead)
+                        {
+                            <span class="badge bg-success">Đã đọc</span>
+                        }
+                        else
+                        {
+                            <span class="badge bg-warning">Chưa đọc</span>
+                        }
+                    </td>
+                    <td>
+                        @if (!notification.IsRead)
+                        {
+                            <a asp-action="MarkAsRead" asp-controller="Notifications" asp-route-id="@notification.NotificationId" asp-route-questionId="@notification.QuestionId" class="btn btn-primary btn-sm">Đánh dấu là đã đọc</a>
+                        }
+
+                        @if (notification.IsRead)
+                        {
+                            <a asp-action="MarkAsNotRead" asp-controller="Notifications" asp-route-id="@notification.NotificationId" asp-route-questionId="@notification.QuestionId" class="btn btn-info btn-sm">Đánh dấu là chưa đọc</a>
+                        }
+                    </td>
+                </tr>
+            }
+        }
+    </tbody>
+</table>
+
+
+@if (Model.Any())
+{
+    var firstNotification = Model.First();
+    <a asp-controller="Questions" asp-action="Details" asp-route-id="@firstNotification.QuestionId" class="btn btn-secondary">Quay lại trang chi tiết câu hỏi</a>
+}
+else
+{
+    <a asp-controller="Home" asp-action="Index" class="btn btn-secondary">Quay lại trang chủ</a>
+}
+

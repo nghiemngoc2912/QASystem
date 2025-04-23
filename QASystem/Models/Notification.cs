@@ -3,6 +3,7 @@
     public class Notification
     {
         public int NotificationId { get; set; }
+        public NotificationType Type { get; set; }
         public int? QuestionId { get; set; }
         public int? AnswerId { get; set; }
         public string Message { get; set; }
@@ -12,5 +13,12 @@
         public Question Question { get; set; }
         public Answer Answer { get; set; }
         public User User { get; set; }
+    }
+
+    public enum NotificationType
+    {
+        CommentOnQuestion,
+        VoteOnQuestion,
+        VoteOnAnswer
     }
 }
