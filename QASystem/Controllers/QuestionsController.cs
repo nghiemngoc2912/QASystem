@@ -205,5 +205,74 @@ namespace QASystem.Controllers
             var redirectId = questionId ?? (await _context.Answers.FindAsync(answerId)).QuestionId;
             return RedirectToAction("Details", new { id = redirectId });
         }
+
+        // Action chỉnh sửa câu hỏi
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> EditQuestion(int questionId, string title, string content, IFormFile image)
+        {
+            var user = await _userManager.GetUserAsync(User);
+            var question = await _context.Questions.FindAsync(questionId);
+
+            if (question == null)
+            {
+                return NotFound();
+            }
+
+            if (question.UserId != user.Id)
+            {
+                return Forbid(); // Chỉ người tạo mới được chỉnh sửa
+            }
+
+            question.Title = title;
+            question.Content = content;
+
+            if (image != null)
+            {
+                var filePath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot/images/questions", image.FileName);
+                using (var stream = new FileStream(filePath, FileMode.Create))
+                {
+                    await image.CopyToAsync(stream);
+                }
+                question.ImageUrl = "/images/questions/" + image.FileName;
+            }
+
+            await _context.SaveChangesAsync();
+            return RedirectToAction("Details", new { id = questionId });
+        }
+
+        // Action chỉnh sửa câu trả lời
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> EditAnswer(int answerId, int questionId, string content, IFormFile image)
+        {
+            var user = await _userManager.GetUserAsync(User);
+            var answer = await _context.Answers.FindAsync(answerId);
+
+            if (answer == null)
+            {
+                return NotFound();
+            }
+
+            if (answer.UserId != user.Id)
+            {
+                return Forbid(); // Chỉ người tạo mới được chỉnh sửa
+            }
+
+            answer.Content = content;
+
+            if (image != null)
+            {
+                var filePath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot/images/comments", image.FileName);
+                using (var stream = new FileStream(filePath, FileMode.Create))
+                {
+                    await image.CopyToAsync(stream);
+                }
+                answer.ImageUrl = "/images/comments/" + image.FileName;
+            }
+
+            await _context.SaveChangesAsync();
+            return RedirectToAction("Details", new { id = questionId });
+        }
     }
 }
