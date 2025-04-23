@@ -1,0 +1,116 @@
+﻿@model List<QASystem.Models.User>
+@using QASystem.Models
+@using Microsoft.AspNetCore.Identity
+@using System.Linq
+@{
+    ViewData["Title"] = "Manage Users";
+    var allRoles = ViewBag.AllRoles as List<IdentityRole<int>>;
+}
+
+<div class="container mt-4">
+    <h2>Manage Users</h2>
+    @if (TempData["Success"] != null)
+    {
+        <div class="alert alert-success" role="alert">
+            @TempData["Success"]
+        </div>
+    }
+    @if (TempData["Error"] != null)
+    {
+        <div class="alert alert-danger" role="alert">
+            @TempData["Error"]
+        </div>
+    }
+
+    @if (Model.Any())
+    {
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>Username</th>
+                    <th>Email</th>
+                    <th>Roles</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var user in Model)
+                {
+                    var roles = ViewBag.UserRoles != null && ViewBag.UserRoles.ContainsKey(user.Id)
+                    ? ViewBag.UserRoles[user.Id]
+                    : new List<string>();
+                    var currentRole = roles.Count > 0 ? roles[0] : "";
+                    <tr>
+                        <td>@user.UserName</td>
+                        <td>@user.Email</td>
+                        <td>@string.Join(", ", roles)</td>
+                        <td>@(user.LockoutEnd.HasValue && user.LockoutEnd > DateTime.UtcNow ? "Locked" : "Active")</td>
+                        <td>
+                            @if (user.LockoutEnd.HasValue && user.LockoutEnd > DateTime.UtcNow)
+                            {
+                                <form asp-action="UnlockUser" method="post" class="d-inline">
+                                    <input type="hidden" name="userId" value="@user.Id" />
+                                    <button type="submit" class="btn btn-success btn-sm">Unlock</button>
+                                </form>
+                            }
+                            else
+                            {
+                                <form asp-action="LockUser" method="post" class="d-inline">
+                                    <input type="hidden" name="userId" value="@user.Id" />
+                                    <button type="submit" class="btn btn-danger btn-sm">Lock</button>
+                                </form>
+                            }
+                            <button type="button" class="btn btn-primary btn-sm ms-2" data-bs-toggle="modal" data-bs-target="#roleModal_@user.Id">
+                                Edit Role
+                            </button>
+
+                            <!-- Modal chỉnh sửa role -->
+                            <div class="modal fade" id="roleModal_@user.Id" tabindex="-1" aria-labelledby="roleModalLabel_@user.Id" aria-hidden="true">
+                                <div class="modal-dialog">
+                                    <div class="modal-content">
+                                        <div class="modal-header">
+                                            <h5 class="modal-title" id="roleModalLabel_@user.Id">Edit Role for @user.UserName</h5>
+                                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                        </div>
+                                        <div class="modal-body">
+                                            <form asp-action="UpdateUserRoles" method="post">
+                                                <input type="hidden" name="userId" value="@user.Id" />
+                                                <div class="mb-3">
+                                                    <label class="form-label">Role</label>
+                                                    @if (allRoles != null && allRoles.Any())
+                                                    {
+                                                        foreach (var role in allRoles)
+                                                        {
+                                                            <div class="form-check">
+                                                                <input type="radio" class="form-check-input" name="role" value="@role.Name" @(currentRole == role.Name ? "checked" : "") />
+                                                                <label class="form-check-label">@role.Name</label>
+                                                            </div>
+                                                        }
+                                                        <div class="form-check">
+                                                            <input type="radio" class="form-check-input" name="role" value="" @(string.IsNullOrEmpty(currentRole) ? "checked" : "") />
+                                                            <label class="form-check-label">No Role</label>
+                                                        </div>
+                                                    }
+                                                    else
+                                                    {
+                                                        <p class="text-muted">No roles available.</p>
+                                                    }
+                                                </div>
+                                                <button type="submit" class="btn btn-primary w-100">Save Changes</button>
+                                            </form>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+    else
+    {
+        <p class="text-muted">No users found.</p>
+    }
+</div>
