@@ -1,0 +1,27 @@
+﻿@{
+    ViewData["Title"] = "Access Denied";
+}
+
+<div class="container mt-5 text-center">
+    <h1 class="display-1">403</h1>
+    <h2>Access Denied</h2>
+    <p class="lead">You don't have permission to access this page.</p>
+    <a asp-controller="Home" asp-action="Index" class="btn btn-primary mt-3">Back to Home</a>
+    @if (!User.Identity.IsAuthenticated)
+    {
+        <p class="mt-3">Please <a asp-controller="Account" asp-action="Login">login</a> or <a asp-controller="Account" asp-action="Register">register</a> to access this content.</p>
+    }
+</div>
+
+<style>
+    .display-1 {
+        font-size: 6rem;
+        font-weight: 300;
+        color: #dc3545; /* Màu đỏ cho số 403 */
+    }
+
+    .lead {
+        font-size: 1.25rem;
+        color: #6c757d; /* Màu xám nhạt */
+    }
+</style>
