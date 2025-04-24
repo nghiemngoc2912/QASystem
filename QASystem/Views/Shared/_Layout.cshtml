@@ -60,7 +60,11 @@
                             </li>
 
                             @* notification *@
-                            @await Component.InvokeAsync("Notification")
+
+                            <div id="notificationContainer">
+                                @await Component.InvokeAsync("Notification")
+                            </div>
+
                         }
                         else
                         {
@@ -91,6 +95,33 @@
     <script src="~/lib/jquery/dist/jquery.min.js"></script>
     <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
     <script src="~/js/site.js" asp-append-version="true"></script>
+	<script src="~/microsoft/signalr/dist/browser/signalr.js"></script>
+
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            // 1. Khởi tạo SignalR connection
+            const connection = new signalR.HubConnectionBuilder()
+                .withUrl("/notificationHub")
+                .build();
+
+            // 2. Khi có event ReceiveNotification, gọi AJAX để fetch lại Partial
+            connection.on("NewNotification", function () {
+                fetch('/Notifications/Partial')
+                    .then(r => r.ok ? r.text() : Promise.reject('Error'))
+                    .then(html => {
+                        document.getElementById('notificationContainer').innerHTML = html;
+                    })
+                    .catch(err => console.error(err));
+            });
+
+            // 3. Start connection
+            connection.start()
+                .catch(err => console.error('SignalR connection error:', err));
+        });
+    </script>
+
+
     @await RenderSectionAsync("Scripts", required: false)
 </body>
 </html>

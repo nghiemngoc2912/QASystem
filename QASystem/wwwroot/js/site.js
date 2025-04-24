@@ -1,4 +1,19 @@
-﻿// Please see documentation at https://learn.microsoft.com/aspnet/core/client-side/bundling-and-minification
-// for details on configuring this project to bundle and minify static web assets.
+﻿/*$(() => {
+    // Khởi động kết nối SignalR
+    const connection = new signalR.HubConnectionBuilder()
+        .withUrl("/notificationHub")
+        .build();
 
-// Write your JavaScript code.
+    connection.start()
+        .then(() => console.log("Connected to notification hub"))
+        .catch(err => console.error(err));
+
+    // Lắng nghe sự kiện ReceiveNotification
+    connection.on("ReceiveNotification", function (message) {
+        const notificationList = document.querySelector(".dropdown-menu");
+        notificationList.insertAdjacentHTML("afterbegin", `<li><a class="dropdown-item fw-bold">${message}</a></li>`);
+
+        const badge = document.querySelector(".badge.bg-danger");
+        badge.textContent = parseInt(badge.textContent) + 1;
+    });
+});*/

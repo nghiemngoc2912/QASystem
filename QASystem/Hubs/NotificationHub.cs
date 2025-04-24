@@ -1,18 +1,19 @@
 ﻿using Microsoft.AspNetCore.SignalR;
+using System.Security.Claims;
 
 namespace QASystem.Hubs
 {
     public class NotificationHub : Hub
     {
-        // Khi client kết nối, nhóm hóa theo userId để dễ gửi riêng
-        public override Task OnConnectedAsync()
+        public override async Task OnConnectedAsync()
         {
-            var userId = Context.UserIdentifier;
-            if (!string.IsNullOrEmpty(userId))
+            var httpContext = Context.GetHttpContext();
+            if (httpContext.User.Identity.IsAuthenticated)
             {
-                Groups.AddToGroupAsync(Context.ConnectionId, $"Notifications_{userId}");
+                var userId = httpContext.User.FindFirstValue(ClaimTypes.NameIdentifier);
+                await Groups.AddToGroupAsync(Context.ConnectionId, userId);
             }
-            return base.OnConnectedAsync();
+            await base.OnConnectedAsync();
         }
     }
 }

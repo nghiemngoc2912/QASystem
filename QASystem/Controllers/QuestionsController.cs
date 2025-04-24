@@ -14,13 +14,15 @@ namespace QASystem.Controllers
         private readonly QasystemContext _context;
         private readonly UserManager<User> _userManager;
         private readonly IHubContext<QuestionHub> _hubContext;
-        private readonly IEmailService _emailService;
-        public QuestionsController(QasystemContext context, UserManager<User> userManager, IHubContext<QuestionHub> hubContext, IEmailService emailService)
+		private readonly IHubContext<NotificationHub> _notiContext;
+		private readonly IEmailService _emailService;
+        public QuestionsController(QasystemContext context, UserManager<User> userManager, IHubContext<QuestionHub> hubContext, IEmailService emailService, IHubContext<NotificationHub> notiContext)
         {
             _context = context;
             _userManager = userManager;
             _hubContext = hubContext;
             _emailService = emailService;
+            _notiContext = notiContext;
         }
         public async Task<IActionResult> Details(int id, int page = 1)
         {
@@ -120,6 +122,8 @@ namespace QASystem.Controllers
             _context.Answers.Add(answer);
             await _context.SaveChangesAsync();
 
+            //Add Answer ID
+            var answerId = answer.AnswerId;
 
             //Add notification
             var question = await _context.Questions
@@ -133,15 +137,19 @@ namespace QASystem.Controllers
                 {
                     Type = NotificationType.CommentOnQuestion,
                     QuestionId = questionId,
+                    AnswerId = answerId,
                     UserId = question.UserId,
                     Message = $"{user.UserName} đã bình luận {content} .",
                     IsRead = false,
                     CreatedAt = DateTime.UtcNow
                 };
+                
                 _context.Notifications.Add(notifyQ);
             }
 
             await _context.SaveChangesAsync();
+
+            await _notiContext.Clients.Group(question.UserId.ToString()).SendAsync("NewNotification");
 
             // Gửi thông báo SignalR
             await _hubContext.Clients.Group($"Question_{questionId}")

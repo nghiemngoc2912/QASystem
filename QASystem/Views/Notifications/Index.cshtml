@@ -6,56 +6,77 @@
 
 <h1>@ViewData["Title"]</h1>
 
-<table class="table table-bordered">
-    <thead>
-        <tr>
-            <th>Thời Gian</th>
-            <th>Nội Dung</th>
-            <th>Trạng Thái</th>
-            <th>Hành Động</th>
-        </tr>
-    </thead>
-    <tbody>
-        @if (!Model.Any())
-        {
+
+<!-- Hiển thị thông tin người dùng -->
+@if (User.Identity.IsAuthenticated)
+{
+    <div class="alert alert-info">
+        Xin chào, <strong>@User.Identity.Name</strong>! Bạn có <strong>@Model.Count()</strong> thông báo.
+    </div>
+}
+
+<form method="post" asp-action="BulkAction" asp-controller="Notifications" id="bulkForm" >
+    <input type="hidden" name="actionType" id="actionType" />
+    <table class="table table-bordered">
+        <thead>
             <tr>
-                <td colspan="4" class="text-center">Không có thông báo nào.</td>
+                <th><input type="checkbox" id="selectAll" /></th>
+                <th>Thời Gian</th>
+                <th>Nội Dung</th>
+                <th>Trạng Thái</th>
+                <th>Hành Động</th>
             </tr>
-        }
-        else
-        {
-            foreach (var notification in Model)
+        </thead>
+        <tbody>
+            @if (!Model.Any())
             {
                 <tr>
-                    <td>@notification.CreatedAt.ToString("dd/MM/yyyy HH:mm")</td>
-                    <td>@notification.Message</td>
-                    <td>
-                        @if (notification.IsRead)
-                        {
-                            <span class="badge bg-success">Đã đọc</span>
-                        }
-                        else
-                        {
-                            <span class="badge bg-warning">Chưa đọc</span>
-                        }
-                    </td>
-                    <td>
-                        @if (!notification.IsRead)
-                        {
-                            <a asp-action="MarkAsRead" asp-controller="Notifications" asp-route-id="@notification.NotificationId" asp-route-questionId="@notification.QuestionId" class="btn btn-primary btn-sm">Đánh dấu là đã đọc</a>
-                        }
-
-                        @if (notification.IsRead)
-                        {
-                            <a asp-action="MarkAsNotRead" asp-controller="Notifications" asp-route-id="@notification.NotificationId" asp-route-questionId="@notification.QuestionId" class="btn btn-info btn-sm">Đánh dấu là chưa đọc</a>
-                        }
-                    </td>
+                    <td colspan="5" class="text-center">Không có thông báo nào.</td>
                 </tr>
             }
-        }
-    </tbody>
-</table>
+            else
+            {
+                foreach (var notification in Model)
+                {
+                    <tr>
+                        <td>
+                            <input type="checkbox" name="selectedIds" value="@notification.NotificationId" class="notification-checkbox" />
+                        </td>
+                        <td>@notification.CreatedAt.ToString("dd/MM/yyyy HH:mm")</td>
+                        <td>@notification.Message</td>
+                        <td>
+                            @if (notification.IsRead)
+                            {
+                                <span class="badge bg-success">Đã đọc</span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-warning">Chưa đọc</span>
+                            }
+                        </td>
+                        <td>
+                            @if (!notification.IsRead)
+                            {
+                                <a asp-action="MarkAsReadIndex" asp-controller="Notifications" asp-route-id="@notification.NotificationId" asp-route-questionId="@notification.QuestionId" class="btn btn-primary btn-sm">Đánh dấu là đã đọc</a>
+                            }
 
+                            @if (notification.IsRead)
+                            {
+                                <a asp-action="MarkAsNotRead" asp-controller="Notifications" asp-route-id="@notification.NotificationId" asp-route-questionId="@notification.QuestionId" class="btn btn-info btn-sm">Đánh dấu là chưa đọc</a>
+                            }
+                        </td>
+                    </tr>
+                }
+            }
+        </tbody>
+    </table>
+
+    @if (Model.Any())
+    {
+        <button type="submit" class="btn btn-success mb-3" onclick="setAction('read')">Đánh dấu là đã đọc</button>
+        <button type="submit" class="btn btn-warning mb-3" onclick="setAction('unread')">Đánh dấu là chưa đọc</button>
+    }
+</form>
 
 @if (Model.Any())
 {
@@ -65,5 +86,20 @@
 else
 {
     <a asp-controller="Home" asp-action="Index" class="btn btn-secondary">Quay lại trang chủ</a>
+}
+
+@section Scripts {
+    <script>
+        document.getElementById("selectAll").addEventListener("click", function () {
+            var checkboxes = document.querySelectorAll(".notification-checkbox");
+            for (var checkbox of checkboxes) {
+                checkbox.checked = this.checked;
+            }
+        });
+
+        function setAction(type) {
+            document.getElementById("actionType").value = type;
+        }
+    </script>
 }
 

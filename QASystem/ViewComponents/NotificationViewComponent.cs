@@ -32,7 +32,8 @@ namespace QASystem.ViewComponents
                 .ToListAsync();
 
             // Tính số chưa đọc
-            var unreadCount = notifications.Count(n => !n.IsRead);
+            var unreadCount = await _context.Notifications
+                .CountAsync(n => n.UserId == user.Id && !n.IsRead);
 
             var model = new NotificationViewModel
             {
@@ -42,5 +43,6 @@ namespace QASystem.ViewComponents
 
             return View(model);
         }
+
     }
 }
