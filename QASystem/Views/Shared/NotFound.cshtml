@@ -1,0 +1,23 @@
+﻿@{
+    ViewData["Title"] = "Page Not Found";
+}
+
+<div class="container mt-5 text-center">
+    <h1 class="display-1">404</h1>
+    <h2>Oops! Page Not Found</h2>
+    <p class="lead">The page you're looking for doesn't exist or has been moved.</p>
+    <a asp-controller="Home" asp-action="Index" class="btn btn-primary mt-3">Back to Home</a>
+</div>
+
+<style>
+    .display-1 {
+        font-size: 6rem;
+        font-weight: 300;
+        color: #dc3545; /* Màu đỏ cho số 404 */
+    }
+
+    .lead {
+        font-size: 1.25rem;
+        color: #6c757d; /* Màu xám nhạt */
+    }
+</style>
