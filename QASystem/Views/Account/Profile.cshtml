@@ -57,6 +57,57 @@
         </div>
     </div>
 
+    <!-- Upload document -->
+    <div class="mt-4">
+        <h3>My Materials</h3>
+        <div class="row mb-3">
+            <div class="col-md-6">
+                <div class="card shadow-sm">
+                    <div class="card-body">
+                        <h5 class="card-title">Total Uploaded Materials</h5>
+                        <p class="card-text">@ViewBag.TotalMaterials</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card shadow-sm">
+                    <div class="card-body">
+                        <h5 class="card-title">Total Downloads</h5>
+                        <p class="card-text">@ViewBag.TotalDownloads</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="mb-3">
+            <a asp-controller="Materials" asp-action="AddMaterial" class="btn btn-success">New</a>
+            <a asp-controller="Materials" asp-action="Manage" class="btn btn-primary">Manage Materials</a>
+        </div>
+        @if (ViewBag.UserMaterials != null && ((List<QASystem.Models.Material>)ViewBag.UserMaterials).Count > 0)
+        {
+            <div class="row">
+                @foreach (var material in ViewBag.UserMaterials)
+                {
+                    <div class="col-md-6 mb-3">
+                        <div class="card shadow-sm">
+                            <div class="card-body">
+                                <h5 class="card-title">
+                                    <a asp-controller="Materials" asp-action="Details" asp-route-id="@material.MaterialId" class="text-decoration-none">
+                                        @material.Title
+                                    </a>
+                                </h5>
+                                <p class="card-text">@material.Description</p>
+                                <p class="text-muted small">Uploaded on @material.CreatedAt.ToString("dd/MM/yyyy") | Downloads: @material.Downloads</p>
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+        else
+        {
+            <p class="text-muted">You haven't uploaded any materials yet.</p>
+        }
+    </div>
     <!-- Các bài viết của người dùng -->
     <div class="mt-4">
         <h3>My Posts</h3>

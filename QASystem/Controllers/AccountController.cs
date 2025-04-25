@@ -101,7 +101,23 @@ namespace QASystem.Controllers
                     Id = id
                 };
             }).ToList();
+            // Lấy danh sách tài liệu (Materials) của người dùng
+            var userMaterials = await _context.Materials
+                .Where(m => m.UserId == user.Id)
+                .OrderByDescending(m => m.CreatedAt)
+                .Take(5) 
+                .ToListAsync();
+            // Tính tổng số tài liệu và tổng lượt tải
+            var totalMaterials = await _context.Materials
+                .Where(m => m.UserId == user.Id)
+                .CountAsync();
 
+            var totalDownloads = await _context.Materials
+                .Where(m => m.UserId == user.Id)
+                .SumAsync(m => m.Downloads);
+            ViewBag.UserMaterials = userMaterials;
+            ViewBag.TotalMaterials = totalMaterials;
+            ViewBag.TotalDownloads = totalDownloads;
             // Gộp và sắp xếp hoạt động
             recentActivities.AddRange(recentQuestions);
             recentActivities.AddRange(recentAnswers);
