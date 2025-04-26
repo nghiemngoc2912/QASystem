@@ -1,7 +1,5 @@
 ﻿using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.SignalR;
-﻿using System.Diagnostics;
-using Firebase.Storage;
 using Microsoft.EntityFrameworkCore;
 using QASystem.Hubs;
 using QASystem.Models;
@@ -12,27 +10,6 @@ var builder = WebApplication.CreateBuilder(args);
 // Thêm dịch vụ MVC
 builder.Services.AddControllersWithViews();
 builder.Services.AddSignalR();
-
-//config firebase
-var firebaseConfig = builder.Configuration.GetSection("Firebase");
-var projectId = firebaseConfig["ProjectId"];
-var jsonCredentialsPath = firebaseConfig["JsonCredentialsPath"];
-// Kiểm tra file JSON có tồn tại không
-if (!File.Exists(jsonCredentialsPath))
-{
-    Console.WriteLine($"ERROR: Firebase credentials file not found at: {jsonCredentialsPath}");
-    throw new FileNotFoundException($"Firebase credentials file not found at: {jsonCredentialsPath}");
-}
-else
-{
-    Console.WriteLine($"Firebase credentials file found at: {jsonCredentialsPath}");
-}
-// Đăng ký FirebaseStorage
-builder.Services.AddSingleton<FirebaseStorage>(sp =>
-    new FirebaseStorage(projectId, new FirebaseStorageOptions
-    {
-        AuthTokenAsyncFactory = () => Task.FromResult(File.ReadAllText(jsonCredentialsPath))
-    }));
 
 // Thêm DbContext
 builder.Services.AddDbContext<QasystemContext>(options =>
