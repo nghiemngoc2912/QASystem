@@ -1,9 +1,11 @@
 ﻿@model QASystem.Models.Material
 
-<h2>Add New Material</h2>
+<h2>Edit Material</h2>
 
 <form id="materialForm" method="post" novalidate>
     <div asp-validation-summary="All" class="text-danger"></div>
+
+    <input type="hidden" asp-for="MaterialId" />
 
     <div class="form-group mb-3">
         <label asp-for="Title" class="form-label"></label>
@@ -19,14 +21,14 @@
 
     <div class="form-group mb-3">
         <label for="cv" class="form-label">Upload File</label>
-        <input type="file" id="cv" class="form-control" required />
-        <input type="hidden" id="cvLink" name="FileLink" />
-        <input type="text" id="cvName" placeholder="No file selected" class="form-control mt-2" readonly />
-        <a id="seeCVLink" style="display: none;" target="_blank"></a>
+        <input type="file" id="cv" class="form-control" />
+        <input type="hidden" id="cvLink" name="FileLink" value="@Model.FileLink" />
+        <input type="text" id="cvName" placeholder="Current file: @Model.FileLink.Split('/').Last()" class="form-control mt-2" readonly />
+        <a id="seeCVLink" href="@Model.FileLink" target="_blank" style="display: inline;">See Current File</a>
     </div>
 
-    <button type="submit" class="btn btn-primary">Upload</button>
-    <a asp-action="Profile" asp-controller="Account" class="btn btn-secondary">Cancel</a>
+    <button type="submit" class="btn btn-primary">Save Changes</button>
+    <a asp-action="Manage" class="btn btn-secondary">Cancel</a>
 </form>
 
 @section Scripts {
@@ -37,7 +39,7 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
         import { getStorage, ref, uploadBytesResumable, getDownloadURL } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-storage.js";
 
-        console.log("Upload file script loaded");
+        console.log("Edit material script loaded");
 
         // Firebase config
         const firebaseConfig = {
@@ -68,9 +70,9 @@
                 return;
             }
 
-            // Đặt tên file với GUID để tránh trùng lặp
-            const fileName = `${Date.now()}_${file.name}`;
-            const storageRef = ref(storage, `materials/${fileName}`);
+            // Đặt tên file với timestamp để tránh trùng lặp
+            const fileName = `materials/${Date.now()}_${file.name}`;
+            const storageRef = ref(storage, fileName);
             const uploadTask = uploadBytesResumable(storageRef, file);
 
             uploadTask.on('state_changed', (snapshot) => {
@@ -90,13 +92,12 @@
                 const seeCVLink = document.getElementById('seeCVLink');
                 seeCVLink.href = downloadURL;
                 seeCVLink.style.display = 'inline';
-                seeCVLink.textContent = 'See File';
+                seeCVLink.textContent = 'See New File';
             });
         }
 
         document.getElementById('cv').addEventListener('change', (event) => {
             const file = event.target.files[0];
-            document.getElementById('cvLink').value = '';
             if (file) {
                 uploadFile(file);
                 console.log("File selected:", file);
@@ -106,7 +107,6 @@
             }
         });
 
-        // Xử lý submit form
         document.getElementById('materialForm').addEventListener('submit', async (event) => {
             event.preventDefault();
 
@@ -115,26 +115,26 @@
             const cvLink = document.getElementById('cvLink').value;
 
             if (!cvLink) {
-                alert("Please upload a file before submitting.");
+                alert("Please upload a file or keep the current file.");
                 return;
             }
 
             try {
-                const response = await fetch('/Materials/AddMaterial', {
+                const response = await fetch(`/Materials/Edit/${@Model.MaterialId}`, {
                     method: 'POST',
                     body: formData
                 });
 
                 if (response.ok) {
-                    window.location.href = '/Account/Profile';
+                    window.location.href = '/Materials/Manage';
                 } else {
                     const errorText = await response.text();
                     console.error("Error submitting form:", errorText);
-                    alert("Failed to save material: " + errorText);
+                    alert("Failed to update material: " + errorText);
                 }
             } catch (error) {
                 console.error("Error submitting form:", error);
-                alert("An error occurred while saving the material.");
+                alert("An error occurred while updating the material.");
             }
         });
     </script>

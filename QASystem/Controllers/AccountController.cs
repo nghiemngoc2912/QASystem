@@ -285,5 +285,28 @@ namespace QASystem.Controllers
         {
             return View();
         }
+        public async Task<IActionResult> PublicProfile(int id)
+        {
+            var user = await _userManager.FindByIdAsync(id.ToString()); 
+            if (user == null)
+            {
+                return NotFound();
+            }
+
+            var userMaterials = _context.Materials
+                .Where(m => m.UserId == id)
+                .ToList();
+
+            var userQuestions = _context.Questions
+                .Where(q => q.UserId == id)
+                .ToList();
+
+            ViewBag.UserMaterials = userMaterials;
+            ViewBag.UserQuestions = userQuestions;
+            ViewBag.TotalMaterials = userMaterials.Count;
+            ViewBag.TotalDownloads = userMaterials.Sum(m => m.Downloads);
+
+            return View(user);
+        }
     }
 }

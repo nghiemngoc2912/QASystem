@@ -105,7 +105,14 @@
 							<div class="d-flex justify-content-between">
 								<div class="d-flex align-items-center mb-2">
 									<img src="@(question.User?.AvatarUrl ?? "/images/default-avatar.png")" alt="Avatar" class="rounded-circle me-2" style="width: 40px; height: 40px;" />
-									<p class="text-muted mb-0">Posted by <strong>@question.User?.UserName</strong></p>
+									<p class="text-muted mb-0">
+										Posted by
+										<strong>
+											<a asp-controller="Account" asp-action="PublicProfile" asp-route-id="@question.User?.Id" class="text-decoration-none" style="color: black;">
+												@question.User?.UserName
+											</a>
+										</strong>
+									</p>
 								</div>
 								@if (User.Identity.IsAuthenticated)
 								{
@@ -187,7 +194,14 @@
 						<div class="card-body">
 							<div class="d-flex align-items-center mb-2">
 								<img src="@(answer.User?.AvatarUrl ?? "/images/default-avatar.png")" alt="Avatar" class="rounded-circle me-2" style="width: 40px; height: 40px;" />
-								<p class="text-muted mb-0">Answered by <strong>@answer.User?.UserName</strong></p>
+								<p class="text-muted mb-0">
+									Answered by
+									<strong>
+										<a asp-controller="Account" asp-action="PublicProfile" asp-route-id="@answer.User?.Id" class="text-decoration-none" style="color: black;">
+											@answer.User?.UserName
+										</a>
+									</strong>
+								</p>
 							</div>
 							<div class="card-text text-muted">@Html.Raw(answer.Content.Substring(0, Math.Min(50, answer.Content.Length)))@(answer.Content.Length > 50 ? "..." : "")</div>
 							@if (!string.IsNullOrEmpty(answer.ImageUrl))

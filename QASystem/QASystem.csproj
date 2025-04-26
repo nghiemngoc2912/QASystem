@@ -7,7 +7,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="FirebaseStorage.net" Version="1.0.3" />
     <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="8.0.14" />
     <PackageReference Include="Microsoft.AspNetCore.SignalR.Client" Version="8.0.14" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="8.0.2">
@@ -18,14 +17,9 @@
     <PackageReference Include="Microsoft.VisualStudio.Web.CodeGeneration.Design" Version="8.0.7" />
     
   </ItemGroup>
-  <ItemGroup>
-  <None Update="Config\firebase_config.json">
-    <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-  </None>
-</ItemGroup>
 
   <ItemGroup>
-    <Folder Include="wwwroot\images\" />
+    <Folder Include="wwwroot\images\questions\" />
   </ItemGroup>
 
 </Project>

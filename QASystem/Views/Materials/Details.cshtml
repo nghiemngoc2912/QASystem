@@ -1,0 +1,32 @@
+﻿@model QASystem.Models.Material
+
+<div class="container mt-5">
+    <h2 class="text-center mb-4">Material Details</h2>
+
+    <div class="card shadow-lg border-0 mx-auto" style="max-width: 600px;">
+        <div class="card-header bg-primary text-white">
+            <h5 class="card-title mb-0">@Model.Title</h5>
+        </div>
+        <div class="card-body">
+            <dl class="row">
+                <dt class="col-sm-4">Description:</dt>
+                <dd class="col-sm-8">@Model.Description</dd>
+
+                <dt class="col-sm-4">Created At:</dt>
+                <dd class="col-sm-8">@Model.CreatedAt.ToString("dd/MM/yyyy HH:mm")</dd>
+
+                <dt class="col-sm-4">Downloads:</dt>
+                <dd class="col-sm-8">@Model.Downloads</dd>
+
+                <dt class="col-sm-4">File:</dt>
+                <dd class="col-sm-8">
+                    <a href="@Model.FileLink" target="_blank" class="btn btn-sm btn-outline-primary">View File</a>
+                </dd>
+            </dl>
+        </div>
+        <div class="card-footer text-center bg-light">
+            <a asp-action="Edit" asp-route-id="@Model.MaterialId" class="btn btn-warning me-2">Edit</a>
+            <a asp-action="Manage" class="btn btn-secondary">Back to List</a>
+        </div>
+    </div>
+</div>
