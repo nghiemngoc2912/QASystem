@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using QASystem.Models;
+using QASystem.Services;
 
 namespace QASystem.Controllers
 {
@@ -11,12 +12,14 @@ namespace QASystem.Controllers
         private readonly UserManager<User> _userManager;
         private readonly SignInManager<User> _signInManager;
         private readonly QasystemContext _context;
+        private readonly IEmailService _emailService;
 
-        public AccountController(UserManager<User> userManager, SignInManager<User> signInManager, QasystemContext context)
+        public AccountController(UserManager<User> userManager, SignInManager<User> signInManager, QasystemContext context, IEmailService emailService)
         {
             _userManager = userManager;
             _signInManager = signInManager;
             _context = context;
+            _emailService = emailService;
         }
 
         // Class để định nghĩa hoạt động
@@ -267,6 +270,110 @@ namespace QASystem.Controllers
         [HttpGet]
         public IActionResult AccessDenied()
         {
+            return View();
+        }
+
+        [HttpGet]
+        public IActionResult ForgotPassword()
+        {
+            return View();
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> ForgotPassword(string email)
+        {
+            if (string.IsNullOrEmpty(email))
+            {
+                ModelState.AddModelError("", "Email is required.");
+                return View();
+            }
+
+            var user = await _userManager.FindByEmailAsync(email);
+            if (user == null)
+            {
+                TempData["Success"] = "If the email exists, a password reset link has been sent.";
+                return RedirectToAction("Login");
+            }
+
+            var token = await _userManager.GeneratePasswordResetTokenAsync(user);
+            var callbackUrl = Url.Action("ResetPassword", "Account", new { userId = user.Id, token = token }, protocol: Request.Scheme);
+
+            try
+            {
+                await _emailService.SendEmailAsync(
+                    email,
+                    "Password Reset Request",
+                    $"Please reset your password by clicking <a href='{callbackUrl}'>here</a>."
+                );
+
+                TempData["Success"] = "If the email exists, a password reset link has been sent.";
+                return RedirectToAction("Login");
+            }
+            catch (Exception ex)
+            {
+                ModelState.AddModelError("", $"Failed to send email: {ex.Message}");
+                return View();
+            }
+        }
+
+        [HttpGet]
+        public IActionResult ResetPassword(string userId, string token)
+        {
+            if (string.IsNullOrEmpty(userId) || string.IsNullOrEmpty(token))
+            {
+                return BadRequest("User ID and token are required.");
+            }
+            ViewBag.UserId = userId;
+            ViewBag.Token = token;
+            return View();
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> ResetPassword(string userId, string token, string password, string confirmPassword)
+        {
+            if (string.IsNullOrEmpty(userId) || string.IsNullOrEmpty(token))
+            {
+                return BadRequest("User ID and token are required.");
+            }
+
+            if (string.IsNullOrEmpty(password) || string.IsNullOrEmpty(confirmPassword))
+            {
+                ModelState.AddModelError("", "Password and confirmation are required.");
+                ViewBag.UserId = userId;
+                ViewBag.Token = token;
+                return View();
+            }
+
+            if (password != confirmPassword)
+            {
+                ModelState.AddModelError("", "Passwords do not match.");
+                ViewBag.UserId = userId;
+                ViewBag.Token = token;
+                return View();
+            }
+
+            var user = await _userManager.FindByIdAsync(userId);
+            if (user == null)
+            {
+                TempData["Success"] = "Password has been reset.";
+                return RedirectToAction("Login");
+            }
+
+            var result = await _userManager.ResetPasswordAsync(user, token, password);
+            if (result.Succeeded)
+            {
+                TempData["Success"] = "Password has been reset.";
+                return RedirectToAction("Login");
+            }
+
+            foreach (var error in result.Errors)
+            {
+                ModelState.AddModelError("", error.Description);
+            }
+            ViewBag.UserId = userId;
+            ViewBag.Token = token;
             return View();
         }
     }
