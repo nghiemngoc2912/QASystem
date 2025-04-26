@@ -105,7 +105,7 @@ namespace QASystem.Controllers
             var userMaterials = await _context.Materials
                 .Where(m => m.UserId == user.Id)
                 .OrderByDescending(m => m.CreatedAt)
-                .Take(5) 
+                .Take(4) 
                 .ToListAsync();
             // Tính tổng số tài liệu và tổng lượt tải
             var totalMaterials = await _context.Materials
@@ -293,9 +293,11 @@ namespace QASystem.Controllers
                 return NotFound();
             }
 
-            var userMaterials = _context.Materials
-                .Where(m => m.UserId == id)
-                .ToList();
+            var userMaterials = await _context.Materials
+                .Where(m => m.UserId == user.Id)
+                .OrderByDescending(m => m.CreatedAt)
+                .Take(4)
+                .ToListAsync();
 
             var userQuestions = _context.Questions
                 .Where(q => q.UserId == id)

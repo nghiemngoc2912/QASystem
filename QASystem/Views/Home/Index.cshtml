@@ -1,5 +1,7 @@
 ﻿@model List<QASystem.Models.Question>
 @using QASystem.Models
+@using Microsoft.AspNetCore.Identity
+@inject UserManager<User> UserManager
 @{
 	ViewData["Title"] = "Home";
 	var recentAnswers = ViewBag.RecentAnswers as List<QASystem.Models.Answer>;
@@ -108,10 +110,24 @@
 									<p class="text-muted mb-0">
 										Posted by
 										<strong>
-											<a asp-controller="Account" asp-action="PublicProfile" asp-route-id="@question.User?.Id" class="text-decoration-none" style="color: black;">
-												@question.User?.UserName
-											</a>
+											@if (question.User != null)
+											{
+												var currentUser = await UserManager.GetUserAsync(User);
+												var isCurrentUser = currentUser != null && currentUser.Id == question.User.Id;
+												<a asp-controller="Account"
+												   asp-action="@(isCurrentUser ? "Profile" : "PublicProfile")"
+												   asp-route-id="@question.User.Id"
+												   class="text-decoration-none"
+												   style="color: black;">
+													@question.User.UserName
+												</a>
+											}
+											else
+											{
+												<span>Unknown User</span>
+											}
 										</strong>
+										on @question.CreatedAt.ToString()
 									</p>
 								</div>
 								@if (User.Identity.IsAuthenticated)
@@ -197,10 +213,24 @@
 								<p class="text-muted mb-0">
 									Answered by
 									<strong>
-										<a asp-controller="Account" asp-action="PublicProfile" asp-route-id="@answer.User?.Id" class="text-decoration-none" style="color: black;">
-											@answer.User?.UserName
-										</a>
+										@if (answer.User != null)
+										{
+											var currentUser = await UserManager.GetUserAsync(User);
+											var isCurrentUser = currentUser != null && currentUser.Id == answer.User.Id;
+											<a asp-controller="Account"
+											   asp-action="@(isCurrentUser ? "Profile" : "PublicProfile")"
+											   asp-route-id="@answer.User.Id"
+											   class="text-decoration-none"
+											   style="color: black;">
+												@answer.User.UserName
+											</a>
+										}
+										else
+										{
+											<span>Unknown User</span>
+										}
 									</strong>
+									on @answer.CreatedAt.ToString()
 								</p>
 							</div>
 							<div class="card-text text-muted">@Html.Raw(answer.Content.Substring(0, Math.Min(50, answer.Content.Length)))@(answer.Content.Length > 50 ? "..." : "")</div>

@@ -63,7 +63,10 @@
             </div>
         </div>
         <div class="mb-3">
-            <a asp-controller="Materials" asp-action="PublicMaterials" asp-route-userId="@Model.Id" class="btn btn-primary">View Materials</a>
+            <a asp-controller="Materials" asp-action="PublicMaterials" asp-route-userId="@Model.Id" class="btn btn-primary">View All Materials</a>
+        </div>
+        <div class="mb-3">
+            <h5>Recent Uploaded Materials</h5>
         </div>
         @if (userMaterials != null && userMaterials.Any())
         {
@@ -74,12 +77,11 @@
                         <div class="card shadow-sm">
                             <div class="card-body">
                                 <h5 class="card-title">
-                                    <a asp-controller="Materials" asp-action="Details" asp-route-id="@material.MaterialId" class="text-decoration-none">
-                                        @material.Title
-                                    </a>
+                                     @material.Title
                                 </h5>
                                 <p class="card-text text-truncate" title="@material.Description">@material.Description</p>
                                 <p class="text-muted small">Uploaded on @material.CreatedAt.ToString("dd/MM/yyyy") | Downloads: @material.Downloads</p>
+                                <a asp-action="Download" asp-route-id="@material.MaterialId" class="btn btn-sm btn-outline-success" target="_blank">Download</a>
                             </div>
                         </div>
                     </div>

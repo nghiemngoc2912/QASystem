@@ -5,6 +5,7 @@ using QASystem.Models;
 using System;
 using System.Threading.Tasks;
 using QASystem.ViewModels;
+using Microsoft.AspNetCore.Authorization;
 
 namespace QASystem.Controllers
 {
@@ -17,30 +18,19 @@ namespace QASystem.Controllers
             _context = context;
         }
 
+        [Authorize]
         [HttpGet]
         public IActionResult AddMaterial()
         {
             return View(new Material());
         }
 
+        [Authorize]
         [HttpPost]
         public async Task<IActionResult> AddMaterial(Material material)
         {
-            Console.WriteLine($"POST AddMaterial called. Title: {material.Title}, Description: {material.Description}, FileLink: {material.FileLink}");
-
             if (!ModelState.IsValid)
             {
-                var errors = ModelState
-                    .Where(x => x.Value.Errors.Count > 0)
-                    .Select(x => new { x.Key, x.Value.Errors })
-                    .ToList();
-                foreach (var error in errors)
-                {
-                    foreach (var errorMessage in error.Errors)
-                    {
-                        Console.WriteLine($"ModelState Error - Key: {error.Key}, Error: {errorMessage.ErrorMessage}");
-                    }
-                }
                 return View(material);
             }
 
@@ -60,30 +50,28 @@ namespace QASystem.Controllers
                 _context.Materials.Add(material);
                 await _context.SaveChangesAsync();
 
-                Console.WriteLine($"Material saved successfully. ID: {material.MaterialId}");
                 return RedirectToAction("Profile", "Account");
             }
             catch (UnauthorizedAccessException ex)
             {
-                Console.WriteLine($"Auth Error: {ex.Message}");
                 ModelState.AddModelError("", "You must be logged in to upload materials.");
                 return View(material);
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Unexpected Error: {ex.Message}\nStack Trace: {ex.StackTrace}");
-                if (ex.InnerException != null)
-                {
-                    Console.WriteLine($"Inner Exception: {ex.InnerException.Message}");
-                }
                 ModelState.AddModelError("", "An unexpected error occurred while saving the material.");
                 return View(material);
             }
         }
 
+        [Authorize]
+        [HttpGet]
         [HttpGet]
         public async Task<IActionResult> Manage(string searchTerm = "", string sortOrder = "desc", int pageNumber = 1)
         {
+            var userId = int.Parse(User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
+                ?? throw new Exception("User not authenticated."));
+
             var viewModel = new MaterialListViewModel
             {
                 SearchTerm = searchTerm,
@@ -91,7 +79,9 @@ namespace QASystem.Controllers
                 PageNumber = pageNumber
             };
 
-            var query = _context.Materials.AsQueryable();
+            var query = _context.Materials
+                .Where(m => m.UserId == userId)
+                .AsQueryable();
 
             if (!string.IsNullOrEmpty(searchTerm))
             {
@@ -130,6 +120,8 @@ namespace QASystem.Controllers
             }
             return View(material);
         }
+
+        [Authorize]
         [HttpGet]
         public IActionResult Delete(int id)
         {
@@ -141,6 +133,8 @@ namespace QASystem.Controllers
             return View(material);
         }
 
+
+        [Authorize]
         [HttpPost, ActionName("Delete")]
         public async Task<IActionResult> DeleteConfirmed(int id)
         {
@@ -166,6 +160,8 @@ namespace QASystem.Controllers
 
             return Redirect(material.FileLink);
         }
+
+        [Authorize]
         [HttpGet]
         public IActionResult Edit(int id)
         {
@@ -177,6 +173,7 @@ namespace QASystem.Controllers
             return View(material);
         }
 
+        [Authorize]
         [HttpPost]
         public async Task<IActionResult> Edit(int id, Material material)
         {
@@ -187,17 +184,6 @@ namespace QASystem.Controllers
 
             if (!ModelState.IsValid)
             {
-                var errors = ModelState
-                    .Where(x => x.Value.Errors.Count > 0)
-                    .Select(x => new { x.Key, x.Value.Errors })
-                    .ToList();
-                foreach (var error in errors)
-                {
-                    foreach (var errorMessage in error.Errors)
-                    {
-                        Debug.WriteLine($"ModelState Error - Key: {error.Key}, Error: {errorMessage.ErrorMessage}");
-                    }
-                }
                 return View(material);
             }
 
@@ -222,16 +208,10 @@ namespace QASystem.Controllers
                 _context.Update(existingMaterial);
                 await _context.SaveChangesAsync();
 
-                Debug.WriteLine($"Material updated successfully. ID: {material.MaterialId}");
                 return RedirectToAction(nameof(Manage));
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"Update Error: {ex.Message}\nStack Trace: {ex.StackTrace}");
-                if (ex.InnerException != null)
-                {
-                    Debug.WriteLine($"Inner Exception: {ex.InnerException.Message}");
-                }
                 ModelState.AddModelError("", "An error occurred while updating the material.");
                 return View(material);
             }
