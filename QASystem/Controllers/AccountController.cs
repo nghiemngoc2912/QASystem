@@ -130,7 +130,7 @@ namespace QASystem.Controllers
                 return NotFound();
             }
 
-            if (string.IsNullOrEmpty(email))
+            if (string.IsNullOrWhiteSpace(email))
             {
                 TempData["Error"] = "Email is required.";
                 return View("Profile", user);
@@ -256,6 +256,9 @@ namespace QASystem.Controllers
             {
                 return RedirectToAction("Index", "Home");
             }
+
+            ViewBag.userName = userName;
+            ViewBag.password = password;
             ModelState.AddModelError("", "Invalid username or password.");
             return View();
         }
