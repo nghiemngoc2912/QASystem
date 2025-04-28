@@ -49,7 +49,6 @@
                             else if (report.AnswerId.HasValue)
                             {
                                 @Html.Raw(report.Answer.Content.Substring(0, Math.Min(50, report.Answer.Content.Length)))
-
                                 @(report.Answer.Content.Length > 50 ? "..." : "")
                                 if (report.Answer.IsDisabled)
                                 {
@@ -66,12 +65,24 @@
                                     <input type="hidden" name="questionId" value="@report.QuestionId" />
                                     <button type="submit" class="btn btn-danger btn-sm">Disable</button>
                                 </form>
+                                <form asp-controller="Admin" asp-action="CancelReport" method="post" class="d-inline">
+                                    <input type="hidden" name="reportId" value="@report.ReportId" />
+                                    <button type="submit" class="btn btn-outline-secondary btn-sm ms-2" onclick="return confirm('Are you sure you want to cancel this report?');">
+                                        <i class="bi bi-x-circle"></i> Cancel
+                                    </button>
+                                </form>
                             }
                             else if (report.AnswerId.HasValue && !report.Answer.IsDisabled)
                             {
                                 <form asp-controller="Admin" asp-action="DisableContent" method="post" class="d-inline">
                                     <input type="hidden" name="answerId" value="@report.AnswerId" />
                                     <button type="submit" class="btn btn-danger btn-sm">Disable</button>
+                                </form>
+                                <form asp-controller="Admin" asp-action="CancelReport" method="post" class="d-inline">
+                                    <input type="hidden" name="reportId" value="@report.ReportId" />
+                                    <button type="submit" class="btn btn-outline-secondary btn-sm ms-2" onclick="return confirm('Are you sure you want to cancel this report?');">
+                                        <i class="bi bi-x-circle"></i> Cancel
+                                    </button>
                                 </form>
                             }
                             else
