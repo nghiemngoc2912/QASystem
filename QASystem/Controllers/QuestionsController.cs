@@ -6,6 +6,8 @@ using Microsoft.EntityFrameworkCore;
 using QASystem.Hubs;
 using QASystem.Models;
 using QASystem.Services;
+using System.Net;
+using System.Text.RegularExpressions;
 
 namespace QASystem.Controllers
 {
@@ -97,6 +99,11 @@ namespace QASystem.Controllers
             return RedirectToAction("Details", new { id = questionId ?? (await _context.Answers.FindAsync(answerId)).QuestionId });
         }
 
+        private string RemoveHtmlTags(string input)
+        {
+            return Regex.Replace(input, "<.*?>", string.Empty);
+        }
+
         [HttpPost]
         public async Task<IActionResult> Answer(int questionId, string content, IFormFile image)
         {
@@ -133,13 +140,16 @@ namespace QASystem.Controllers
             // Notify chủ question (nếu muốn)
             if (question != null && question.UserId != user.Id)
             {
+                var cleanContent = RemoveHtmlTags(content);
+                cleanContent = WebUtility.HtmlDecode(cleanContent);
+
                 var notifyQ = new Notification
                 {
                     Type = NotificationType.CommentOnQuestion,
                     QuestionId = questionId,
                     AnswerId = answerId,
                     UserId = question.UserId,
-                    Message = $"{user.UserName} đã bình luận {content} .",
+                    Message = $"{user.UserName} đã bình luận \"{cleanContent}\" .",
                     IsRead = false,
                     CreatedAt = DateTime.UtcNow
                 };
