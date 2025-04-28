@@ -111,7 +111,7 @@ namespace QASystem.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> CreateQuestion(string title, string content, string tags, IFormFile image)
         {
-            if (string.IsNullOrEmpty(title) || string.IsNullOrEmpty(content))
+            if (string.IsNullOrWhiteSpace(title) || string.IsNullOrWhiteSpace(content))
             {
                 TempData["Error"] = "Title and content are required.";
                 return RedirectToAction("Index");

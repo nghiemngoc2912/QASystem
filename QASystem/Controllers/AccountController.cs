@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using QASystem.Models;
 using QASystem.Services;
+using System.Text.RegularExpressions;
 
 namespace QASystem.Controllers
 {
@@ -135,9 +136,23 @@ namespace QASystem.Controllers
                 TempData["Error"] = "Email is required.";
                 return View("Profile", user);
             }
+            //check email format
+            var regex = new Regex(@"^[^@\s]+@[^@\s]+\.[^@\s]+$");
+            if (!regex.IsMatch(email))
+            {
+                TempData["Error"] = "Invalid Email";
+                return View("Profile", user);
+            }
 
             if (user.Email != email)
             {
+                //check if email exist
+                var existingUser = await _userManager.FindByEmailAsync(email);
+                if (existingUser != null)
+                {
+                    TempData["Error"] = "Email is used by another user.";
+                    return View("Profile", user);
+                }
                 var setEmailResult = await _userManager.SetEmailAsync(user, email);
                 if (!setEmailResult.Succeeded)
                 {
