@@ -225,6 +225,21 @@ namespace QASystem.Controllers
                 return View(user);
             }
 
+            // Kiểm tra định dạng Email
+            if (!IsValidEmail(user.Email))
+            {
+                ModelState.AddModelError("Email", "Invalid email format.");
+                return View(user);
+            }
+
+            // Kiểm tra Email đã tồn tại chưa
+            var existingUser = await _userManager.FindByEmailAsync(user.Email);
+            if (existingUser != null)
+            {
+                ModelState.AddModelError("Email", "Email is already taken.");
+                return View(user);
+            }
+
             if (ModelState.IsValid)
             {
                 user.CreatedAt = DateTime.Now;
@@ -242,6 +257,21 @@ namespace QASystem.Controllers
             }
             return View(user);
         }
+
+        // Hàm kiểm tra định dạng Email
+        private bool IsValidEmail(string email)
+        {
+            try
+            {
+                var addr = new System.Net.Mail.MailAddress(email);
+                return addr.Address == email;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
 
         // GET: Đăng nhập
         [HttpGet]
