@@ -1,0 +1,36 @@
+﻿@model List<QASystem.Models.Material>
+
+@{
+    ViewData["Title"] = "User Materials";
+    var userId = ViewBag.UserId;
+}
+
+<div class="container mt-4">
+    <h2>User Materials</h2>
+    <div class="mb-3">
+        <a asp-controller="Account" asp-action="PublicProfile" asp-route-id="@userId" class="btn btn-secondary">Back to Profile</a>
+    </div>
+
+    @if (Model.Any())
+    {
+        <div class="row">
+            @foreach (var material in Model)
+            {
+                <div class="col-md-6 mb-3">
+                    <div class="card shadow-sm">
+                        <div class="card-body">
+                            <h5 class="card-title">@material.Title</h5>
+                            <p class="card-text text-truncate" title="@material.Description">@material.Description</p>
+                            <p class="text-muted small">Uploaded on @material.CreatedAt.ToString("dd/MM/yyyy") | Downloads: @material.Downloads</p>
+                            <a asp-action="Download" asp-controller="Materials"  asp-route-id="@material.MaterialId" class="btn btn-sm btn-outline-success" target="_blank">Download</a>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+    else
+    {
+        <p class="text-muted">No materials available.</p>
+    }
+</div>

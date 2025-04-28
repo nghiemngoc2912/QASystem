@@ -1,0 +1,141 @@
+﻿@model QASystem.Models.Material
+
+<h2>Add New Material</h2>
+
+<form id="materialForm" method="post" novalidate>
+    <div asp-validation-summary="All" class="text-danger"></div>
+
+    <div class="form-group mb-3">
+        <label asp-for="Title" class="form-label"></label>
+        <input asp-for="Title" class="form-control" required />
+        <span asp-validation-for="Title" class="text-danger"></span>
+    </div>
+
+    <div class="form-group mb-3">
+        <label asp-for="Description" class="form-label"></label>
+        <textarea asp-for="Description" class="form-control" rows="3" required></textarea>
+        <span asp-validation-for="Description" class="text-danger"></span>
+    </div>
+
+    <div class="form-group mb-3">
+        <label for="cv" class="form-label">Upload File</label>
+        <input type="file" id="cv" class="form-control" required />
+        <input type="hidden" id="cvLink" name="FileLink" />
+        <input type="text" id="cvName" placeholder="No file selected" class="form-control mt-2" readonly />
+        <a id="seeCVLink" style="display: none;" target="_blank"></a>
+    </div>
+
+    <button type="submit" class="btn btn-primary">Upload</button>
+    <a asp-action="Profile" asp-controller="Account" class="btn btn-secondary">Cancel</a>
+</form>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+
+    <!-- Firebase SDK -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
+        import { getStorage, ref, uploadBytesResumable, getDownloadURL } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-storage.js";
+
+        console.log("Upload file script loaded");
+
+        // Firebase config
+        const firebaseConfig = {
+            apiKey: "AIzaSyA_9NzSD9i6dCQJWUU66l9rLdsg9MfvNbg",
+            authDomain: "interviewmangement-7da65.firebaseapp.com",
+            projectId: "interviewmangement-7da65",
+            storageBucket: "interviewmangement-7da65.appspot.com",
+            messagingSenderId: "29115534424",
+            appId: "1:29115534424:web:3181f68a570e6a47ef4e2d",
+            measurementId: "G-BJCK4P9GRM"
+        };
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const storage = getStorage(app);
+
+        function uploadFile(file) {
+            // Kiểm tra loại file
+            const allowedTypes = ["application/pdf", "image/jpeg", "image/png", "application/msword", "application/vnd.openxmlformats-officedocument.wordprocessingml.document"];
+            if (!allowedTypes.includes(file.type)) {
+                alert("Only PDF, JPEG, PNG, and DOC/DOCX files are allowed.");
+                return;
+            }
+
+            // Kiểm tra kích thước file (tối đa 10MB)
+            if (file.size > 10 * 1024 * 1024) {
+                alert("File size exceeds 10MB limit.");
+                return;
+            }
+
+            // Đặt tên file với GUID để tránh trùng lặp
+            const fileName = `${Date.now()}_${file.name}`;
+            const storageRef = ref(storage, `materials/${fileName}`);
+            const uploadTask = uploadBytesResumable(storageRef, file);
+
+            uploadTask.on('state_changed', (snapshot) => {
+                const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+                console.log('Upload is ' + progress + '% done');
+                document.getElementById("cvName").placeholder = progress === 100 ? "UPLOAD DONE" : "UPLOADING...";
+            }, (error) => {
+                console.error("Error uploading file:", error);
+                document.getElementById("cvName").placeholder = "UPLOAD FAILED";
+                alert("Failed to upload file: " + error.message);
+            }, async () => {
+                const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+                document.getElementById('cvName').value = file.name;
+                document.getElementById('cvLink').value = downloadURL;
+                console.log('File download URL:', downloadURL);
+
+                const seeCVLink = document.getElementById('seeCVLink');
+                seeCVLink.href = downloadURL;
+                seeCVLink.style.display = 'inline';
+                seeCVLink.textContent = 'See File';
+            });
+        }
+
+        document.getElementById('cv').addEventListener('change', (event) => {
+            const file = event.target.files[0];
+            document.getElementById('cvLink').value = '';
+            if (file) {
+                uploadFile(file);
+                console.log("File selected:", file);
+            } else {
+                console.error("File not found");
+                alert("Please select a file.");
+            }
+        });
+
+        // Xử lý submit form
+        document.getElementById('materialForm').addEventListener('submit', async (event) => {
+            event.preventDefault();
+
+            const form = event.target;
+            const formData = new FormData(form);
+            const cvLink = document.getElementById('cvLink').value;
+
+            if (!cvLink) {
+                alert("Please upload a file before submitting.");
+                return;
+            }
+
+            try {
+                const response = await fetch('/Materials/AddMaterial', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (response.ok) {
+                    window.location.href = '/Account/Profile';
+                } else {
+                    const errorText = await response.text();
+                    console.error("Error submitting form:", errorText);
+                    alert("Failed to save material: " + errorText);
+                }
+            } catch (error) {
+                console.error("Error submitting form:", error);
+                alert("An error occurred while saving the material.");
+            }
+        });
+    </script>
+}
