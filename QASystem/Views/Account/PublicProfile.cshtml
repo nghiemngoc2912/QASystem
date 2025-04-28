@@ -1,0 +1,125 @@
+﻿@model QASystem.Models.User
+@using QASystem.Models
+@{
+    ViewData["Title"] = "Public Profile";
+    var userMaterials = ViewBag.UserMaterials as List<Material>;
+    var userQuestions = ViewBag.UserQuestions as List<Question>;
+}
+
+<style>
+    .card-text {
+        max-height: 3.6em;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+    }
+
+    .card {
+        min-width: 300px;
+    }
+</style>
+
+<div class="container mt-4">
+    <h2>@Model.UserName's Public Profile</h2>
+
+    <div class="row">
+        <div class="col-md-4 text-center">
+            <img src="@(Model.AvatarUrl ?? "/images/default-avatar.png")" alt="Avatar" class="rounded-circle mb-3" style="width: 150px; height: 150px;" />
+            <h4>@Model.UserName</h4>
+            <p class="text-muted">@Model.Email</p>
+        </div>
+        <div class="col-md-8">
+            <div class="card shadow-sm mb-4">
+                <div class="card-body">
+                    <h5 class="card-title">User Information</h5>
+                    <p><strong>Username:</strong> @Model.UserName</p>
+                    <p><strong>Email:</strong> @Model.Email</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Materials Section -->
+    <div class="mt-4">
+        <h3>Materials</h3>
+        <div class="row mb-3">
+            <div class="col-md-6">
+                <div class="card shadow-sm">
+                    <div class="card-body">
+                        <h5 class="card-title">Total Uploaded Materials</h5>
+                        <p class="card-text">@ViewBag.TotalMaterials</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card shadow-sm">
+                    <div class="card-body">
+                        <h5 class="card-title">Total Downloads</h5>
+                        <p class="card-text">@ViewBag.TotalDownloads</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="mb-3">
+            <a asp-controller="Materials" asp-action="PublicMaterials" asp-route-userId="@Model.Id" class="btn btn-primary">View All Materials</a>
+        </div>
+        <div class="mb-3">
+            <h5>Recent Uploaded Materials</h5>
+        </div>
+        @if (userMaterials != null && userMaterials.Any())
+        {
+            <div class="row">
+                @foreach (var material in userMaterials)
+                {
+                    <div class="col-md-6 mb-3">
+                        <div class="card shadow-sm">
+                            <div class="card-body">
+                                <h5 class="card-title">
+                                     @material.Title
+                                </h5>
+                                <p class="card-text text-truncate" title="@material.Description">@material.Description</p>
+                                <p class="text-muted small">Uploaded on @material.CreatedAt.ToString("dd/MM/yyyy") | Downloads: @material.Downloads</p>
+                                <a asp-action="Download" asp-route-id="@material.MaterialId" class="btn btn-sm btn-outline-success" target="_blank">Download</a>
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+        else
+        {
+            <p class="text-muted">No materials uploaded yet.</p>
+        }
+    </div>
+
+    <!-- Posts Section -->
+    <div class="mt-4">
+        <h3>Posts</h3>
+        @if (userQuestions != null && userQuestions.Any())
+        {
+            <div class="row">
+                @foreach (var question in userQuestions)
+                {
+                    <div class="col-md-6 mb-3">
+                        <div class="card shadow-sm">
+                            <div class="card-body">
+                                <h5 class="card-title">
+                                    <a asp-controller="Questions" asp-action="Details" asp-route-id="@question.QuestionId" class="text-decoration-none">
+                                        @question.Title
+                                    </a>
+                                </h5>
+                                <p class="text-muted small">Posted on @question.CreatedAt.ToString()</p>
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+        else
+        {
+            <p class="text-muted">No posts yet.</p>
+        }
+    </div>
+</div>

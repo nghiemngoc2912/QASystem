@@ -1,5 +1,7 @@
 ﻿@model List<QASystem.Models.Question>
 @using QASystem.Models
+@using Microsoft.AspNetCore.Identity
+@inject UserManager<User> UserManager
 @{
 	ViewData["Title"] = "Home";
 	var recentAnswers = ViewBag.RecentAnswers as List<QASystem.Models.Answer>;
@@ -105,7 +107,28 @@
 							<div class="d-flex justify-content-between">
 								<div class="d-flex align-items-center mb-2">
 									<img src="@(question.User?.AvatarUrl ?? "/images/default-avatar.png")" alt="Avatar" class="rounded-circle me-2" style="width: 40px; height: 40px;" />
-									<p class="text-muted mb-0">Posted by <strong>@question.User?.UserName</strong></p>
+									<p class="text-muted mb-0">
+										Posted by
+										<strong>
+											@if (question.User != null)
+											{
+												var currentUser = await UserManager.GetUserAsync(User);
+												var isCurrentUser = currentUser != null && currentUser.Id == question.User.Id;
+												<a asp-controller="Account"
+												   asp-action="@(isCurrentUser ? "Profile" : "PublicProfile")"
+												   asp-route-id="@question.User.Id"
+												   class="text-decoration-none"
+												   style="color: black;">
+													@question.User.UserName
+												</a>
+											}
+											else
+											{
+												<span>Unknown User</span>
+											}
+										</strong>
+										on @question.CreatedAt.ToString()
+									</p>
 								</div>
 								@if (User.Identity.IsAuthenticated)
 								{
@@ -187,7 +210,28 @@
 						<div class="card-body">
 							<div class="d-flex align-items-center mb-2">
 								<img src="@(answer.User?.AvatarUrl ?? "/images/default-avatar.png")" alt="Avatar" class="rounded-circle me-2" style="width: 40px; height: 40px;" />
-								<p class="text-muted mb-0">Answered by <strong>@answer.User?.UserName</strong></p>
+								<p class="text-muted mb-0">
+									Answered by
+									<strong>
+										@if (answer.User != null)
+										{
+											var currentUser = await UserManager.GetUserAsync(User);
+											var isCurrentUser = currentUser != null && currentUser.Id == answer.User.Id;
+											<a asp-controller="Account"
+											   asp-action="@(isCurrentUser ? "Profile" : "PublicProfile")"
+											   asp-route-id="@answer.User.Id"
+											   class="text-decoration-none"
+											   style="color: black;">
+												@answer.User.UserName
+											</a>
+										}
+										else
+										{
+											<span>Unknown User</span>
+										}
+									</strong>
+									on @answer.CreatedAt.ToString()
+								</p>
 							</div>
 							<div class="card-text text-muted">@Html.Raw(answer.Content.Substring(0, Math.Min(50, answer.Content.Length)))@(answer.Content.Length > 50 ? "..." : "")</div>
 							@if (!string.IsNullOrEmpty(answer.ImageUrl))
