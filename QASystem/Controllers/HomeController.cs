@@ -18,7 +18,8 @@ namespace QASystem.Controllers
             _context = context;
             _userManager = userManager;
         }
-        public async Task<IActionResult> Index(int page = 1, string keyword = null, string tag = null, string username = null)
+
+        public async Task<IActionResult> Index(int page = 1, string keyword = null, string tag = null, string username = null, string dateSortOrder = "desc", string voteSortOrder = "desc")
         {
             List<Question> questions = new List<Question>();
             bool isAdmin = User.IsInRole("Admin") || User.IsInRole("Moderator");
@@ -33,6 +34,7 @@ namespace QASystem.Controllers
                     .Include(q => q.Answers)
                     .AsQueryable();
 
+                // Apply filters
                 if (!string.IsNullOrEmpty(keyword))
                 {
                     keyword = keyword.ToLower();
@@ -49,21 +51,34 @@ namespace QASystem.Controllers
                     questionsQuery = questionsQuery.Where(q => q.User.UserName.ToLower().Contains(username.ToLower()));
                 }
 
-                var totalQuestions = await questionsQuery.CountAsync();
-
-                questions = await questionsQuery
+                // Calculate total vote count and latest answer time for sorting
+                var questionsWithStats = questionsQuery
                     .Select(q => new
                     {
                         Question = q,
-                        LatestAnswerTime = q.Answers.OrderByDescending(a => a.CreatedAt).Select(a => (DateTime?)a.CreatedAt).FirstOrDefault() ?? q.CreatedAt
-                    })
-                    .OrderByDescending(q => q.LatestAnswerTime) // Sắp xếp theo thời gian câu trả lời gần nhất
+                        LatestAnswerTime = q.Answers.OrderByDescending(a => a.CreatedAt).Select(a => (DateTime?)a.CreatedAt).FirstOrDefault() ?? q.CreatedAt,
+                        VoteCount = q.Votes.Sum(v => v.VoteType)
+                    });
+
+                // Apply sorting
+                var sortedQuery = dateSortOrder.ToLower() == "asc"
+                    ? questionsWithStats.OrderBy(q => q.LatestAnswerTime)
+                    : questionsWithStats.OrderByDescending(q => q.LatestAnswerTime);
+
+                // Apply secondary sorting by votes
+                sortedQuery = voteSortOrder.ToLower() == "asc"
+                    ? sortedQuery.ThenBy(q => q.VoteCount)
+                    : sortedQuery.ThenByDescending(q => q.VoteCount);
+
+                var totalQuestions = await questionsQuery.CountAsync();
+
+                questions = await sortedQuery
                     .Skip((page - 1) * PageSize)
                     .Take(PageSize)
                     .Select(q => q.Question)
                     .ToListAsync();
 
-                // Lấy các câu trả lời gần đây
+                // Recent answers
                 var recentAnswers = await _context.Answers
                     .Include(a => a.User)
                     .Include(a => a.Question)
@@ -71,7 +86,7 @@ namespace QASystem.Controllers
                     .Take(5)
                     .ToListAsync();
 
-                // Thống kê cho từng câu hỏi
+                // Question stats
                 var questionStats = questions.ToDictionary(
                     q => q.QuestionId,
                     q => new QuestionStatsViewModel
@@ -82,12 +97,15 @@ namespace QASystem.Controllers
                     }
                 );
 
+                // Pass parameters to ViewBag
                 ViewBag.RecentAnswers = recentAnswers;
                 ViewBag.CurrentPage = page;
                 ViewBag.TotalPages = (int)Math.Ceiling(totalQuestions / (double)PageSize);
                 ViewBag.Keyword = keyword;
                 ViewBag.SelectedTag = tag;
                 ViewBag.Username = username;
+                ViewBag.DateSortOrder = dateSortOrder;
+                ViewBag.VoteSortOrder = voteSortOrder;
                 ViewBag.QuestionStats = questionStats;
             }
             catch (Exception ex)
@@ -98,6 +116,8 @@ namespace QASystem.Controllers
                 ViewBag.Keyword = keyword;
                 ViewBag.SelectedTag = tag;
                 ViewBag.Username = username;
+                ViewBag.DateSortOrder = dateSortOrder;
+                ViewBag.VoteSortOrder = voteSortOrder;
                 ViewBag.QuestionStats = new Dictionary<int, QuestionStatsViewModel>();
                 TempData["Error"] = "An error occurred while loading questions: " + ex.Message;
                 questions = new List<Question>();
@@ -126,7 +146,7 @@ namespace QASystem.Controllers
                 CreatedAt = DateTime.Now
             };
 
-            // Xử lý upload hình ảnh
+            // Handle image upload
             if (image != null && image.Length > 0)
             {
                 var fileName = Guid.NewGuid().ToString() + Path.GetExtension(image.FileName);
@@ -135,7 +155,7 @@ namespace QASystem.Controllers
                 {
                     await image.CopyToAsync(stream);
                 }
-                question.ImageUrl = "/images/questions" + fileName;
+                question.ImageUrl = "/images/questions/" + fileName;
             }
 
             _context.Questions.Add(question);
@@ -178,12 +198,8 @@ namespace QASystem.Controllers
             }
             return View("~/Views/Shared/AccessDenied.cshtml");
         }
-        public IActionResult Privacy()
-        {
-            return View();
-        }
 
-        public IActionResult NotFound()
+        public IActionResult Privacy()
         {
             return View();
         }
