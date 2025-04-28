@@ -2,7 +2,7 @@
 
 <h2>Add New Material</h2>
 
-<form id="materialForm" method="post" novalidate>
+<form id="materialForm" asp-action="AddMaterial" asp-controller="Materials" method="post" enctype="multipart/form-data" novalidate>
     <div asp-validation-summary="All" class="text-danger"></div>
 
     <div class="form-group mb-3">
@@ -106,36 +106,5 @@
             }
         });
 
-        // Xử lý submit form
-        document.getElementById('materialForm').addEventListener('submit', async (event) => {
-            event.preventDefault();
-
-            const form = event.target;
-            const formData = new FormData(form);
-            const cvLink = document.getElementById('cvLink').value;
-
-            if (!cvLink) {
-                alert("Please upload a file before submitting.");
-                return;
-            }
-
-            try {
-                const response = await fetch('/Materials/AddMaterial', {
-                    method: 'POST',
-                    body: formData
-                });
-
-                if (response.ok) {
-                    window.location.href = '/Account/Profile';
-                } else {
-                    const errorText = await response.text();
-                    console.error("Error submitting form:", errorText);
-                    alert("Failed to save material: " + errorText);
-                }
-            } catch (error) {
-                console.error("Error submitting form:", error);
-                alert("An error occurred while saving the material.");
-            }
-        });
     </script>
 }

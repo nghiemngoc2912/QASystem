@@ -108,13 +108,17 @@ namespace QASystem.Controllers
             var userMaterials = await _context.Materials
                 .Where(m => m.UserId == user.Id)
                 .OrderByDescending(m => m.CreatedAt)
-                .Take(4) 
+                .Take(4)
                 .ToListAsync();
-            // Tính tổng số tài liệu và tổng lượt tải
-            var totalMaterials = await _context.Materials
+            var userMaterialsCount = await _context.Materials
                 .Where(m => m.UserId == user.Id)
-                .CountAsync();
+                .OrderByDescending(m => m.CreatedAt)
+                .ToListAsync();
 
+            ViewBag.UserMaterials = userMaterials;
+            ViewBag.UserQuestions = userQuestions;
+            ViewBag.TotalMaterials = userMaterialsCount.Count;
+            ViewBag.TotalDownloads = userMaterialsCount.Sum(m => m.Downloads);
             // Gộp và sắp xếp hoạt động
             recentActivities.AddRange(recentQuestions);
             recentActivities.AddRange(recentAnswers);
@@ -399,15 +403,18 @@ namespace QASystem.Controllers
                 .OrderByDescending(m => m.CreatedAt)
                 .Take(4)
                 .ToListAsync();
-
+            var userMaterialsCount = await _context.Materials
+                .Where(m => m.UserId == user.Id)
+                .OrderByDescending(m => m.CreatedAt)
+                .ToListAsync();
             var userQuestions = _context.Questions
                 .Where(q => q.UserId == id)
                 .ToList();
 
             ViewBag.UserMaterials = userMaterials;
             ViewBag.UserQuestions = userQuestions;
-            ViewBag.TotalMaterials = userMaterials.Count;
-            ViewBag.TotalDownloads = userMaterials.Sum(m => m.Downloads);
+            ViewBag.TotalMaterials = userMaterialsCount.Count;
+            ViewBag.TotalDownloads = userMaterialsCount.Sum(m => m.Downloads);
 
             return View(user);
         }
