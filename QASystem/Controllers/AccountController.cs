@@ -385,6 +385,7 @@ namespace QASystem.Controllers
             ViewBag.UserId = userId;
             ViewBag.Token = token;
             return View();
+        }
         public async Task<IActionResult> PublicProfile(int id)
         {
             var user = await _userManager.FindByIdAsync(id.ToString()); 
