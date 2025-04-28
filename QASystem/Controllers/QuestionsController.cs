@@ -14,8 +14,8 @@ namespace QASystem.Controllers
         private readonly QasystemContext _context;
         private readonly UserManager<User> _userManager;
         private readonly IHubContext<QuestionHub> _hubContext;
-		private readonly IHubContext<NotificationHub> _notiContext;
-		private readonly IEmailService _emailService;
+        private readonly IHubContext<NotificationHub> _notiContext;
+        private readonly IEmailService _emailService;
         public QuestionsController(QasystemContext context, UserManager<User> userManager, IHubContext<QuestionHub> hubContext, IEmailService emailService, IHubContext<NotificationHub> notiContext)
         {
             _context = context;
@@ -143,7 +143,7 @@ namespace QASystem.Controllers
                     IsRead = false,
                     CreatedAt = DateTime.UtcNow
                 };
-                
+
                 _context.Notifications.Add(notifyQ);
             }
 
@@ -304,6 +304,100 @@ namespace QASystem.Controllers
 
             await _context.SaveChangesAsync();
             return RedirectToAction("Details", new { id = questionId });
+        }
+
+        [HttpPost]
+        [Authorize]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> DeleteAnswer(int answerId, int questionId)
+        {
+            var user = await _userManager.GetUserAsync(User);
+            var answer = await _context.Answers.FindAsync(answerId);
+
+            if (answer == null)
+            {
+                TempData["Error"] = "Answer not found.";
+                return RedirectToAction("Details", new { id = questionId });
+            }
+
+            if (answer.UserId != user.Id)
+            {
+                TempData["Error"] = "You are not authorized to delete this answer.";
+                return Forbid();
+            }
+
+            // Remove related votes, notifications, and reports
+            var votes = _context.Votes.Where(v => v.AnswerId == answerId);
+            var notifications = _context.Notifications.Where(n => n.AnswerId == answerId);
+            var reports = _context.Reports.Where(r => r.AnswerId == answerId);
+
+            _context.Votes.RemoveRange(votes);
+            _context.Notifications.RemoveRange(notifications);
+            _context.Reports.RemoveRange(reports);
+            _context.Answers.Remove(answer);
+
+            await _context.SaveChangesAsync();
+
+            // Notify clients about the deletion
+            await _hubContext.Clients.Group($"Question_{questionId}")
+                .SendAsync("AnswerDeleted", answerId);
+
+            TempData["Success"] = "Answer deleted successfully.";
+            return RedirectToAction("Details", new { id = questionId });
+        }
+
+        [HttpPost]
+        [Authorize]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> DeleteQuestion(int questionId)
+        {
+            var user = await _userManager.GetUserAsync(User);
+            var question = await _context.Questions
+                .Include(q => q.Answers)
+                .Include(q => q.Votes)
+                .Include(q => q.Reports)
+                .Include(q => q.Notifications)
+                .Include(q => q.Tags)
+                .FirstOrDefaultAsync(q => q.QuestionId == questionId);
+
+            if (question == null)
+            {
+                TempData["Error"] = "Question not found.";
+                return RedirectToAction("Index");
+            }
+
+            if (question.UserId != user.Id)
+            {
+                TempData["Error"] = "You are not authorized to delete this question.";
+                return Forbid();
+            }
+
+            // Remove related data
+            var answerIds = question.Answers.Select(a => a.AnswerId).ToList();
+            var answerVotes = _context.Votes.Where(v => v.QuestionId == questionId || answerIds.Contains(v.AnswerId.Value));
+            var answerNotifications = _context.Notifications.Where(n => n.QuestionId == questionId || answerIds.Contains(n.AnswerId.Value));
+            var answerReports = _context.Reports.Where(r => r.QuestionId == questionId || answerIds.Contains(r.AnswerId.Value));
+
+            _context.Votes.RemoveRange(answerVotes);
+            _context.Notifications.RemoveRange(answerNotifications);
+            _context.Reports.RemoveRange(answerReports);
+            _context.Answers.RemoveRange(question.Answers);
+            //_context.Tags.RemoveRange(question.Tags);
+            question.Tags.Clear();
+            await _context.SaveChangesAsync();
+
+
+            _context.Questions.Remove(question);
+
+
+            await _context.SaveChangesAsync();
+
+            // Notify clients about the deletion
+            await _hubContext.Clients.Group($"Question_{questionId}")
+                .SendAsync("QuestionDeleted", questionId);
+
+            TempData["Success"] = "Question deleted successfully.";
+            return RedirectToAction("Index", "Home");
         }
 
 
