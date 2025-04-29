@@ -6,6 +6,8 @@ using Microsoft.EntityFrameworkCore;
 using QASystem.Hubs;
 using QASystem.Models;
 using QASystem.Services;
+using System.Net;
+using System.Text.RegularExpressions;
 
 namespace QASystem.Controllers
 {
@@ -14,6 +16,7 @@ namespace QASystem.Controllers
         private readonly QasystemContext _context;
         private readonly UserManager<User> _userManager;
         private readonly IHubContext<QuestionHub> _hubContext;
+        private readonly IHubContext<NotificationHub> _notiContext;
 		private readonly IHubContext<NotificationHub> _notiContext;
         private readonly IHubContext<ReportHub> _reportContext;
         private readonly IEmailService _emailService;
@@ -82,7 +85,7 @@ namespace QASystem.Controllers
             }
             else
             {
-                vote.VoteType = voteType;
+                vote.VoteType = vote.VoteType == voteType ? 0 : voteType;
             }
 
             await _context.SaveChangesAsync();
@@ -97,6 +100,11 @@ namespace QASystem.Controllers
                 .SendAsync("ReceiveVoteUpdate", answerId, voteCount);
 
             return RedirectToAction("Details", new { id = questionId ?? (await _context.Answers.FindAsync(answerId)).QuestionId });
+        }
+
+        private string RemoveHtmlTags(string input)
+        {
+            return Regex.Replace(input, "<.*?>", string.Empty);
         }
 
         [HttpPost]
@@ -135,17 +143,20 @@ namespace QASystem.Controllers
             // Notify chủ question (nếu muốn)
             if (question != null && question.UserId != user.Id)
             {
+                var cleanContent = RemoveHtmlTags(content);
+                cleanContent = WebUtility.HtmlDecode(cleanContent);
+
                 var notifyQ = new Notification
                 {
                     Type = NotificationType.CommentOnQuestion,
                     QuestionId = questionId,
                     AnswerId = answerId,
                     UserId = question.UserId,
-                    Message = $"{user.UserName} đã bình luận {content} .",
+                    Message = $"{user.UserName} đã bình luận \"{cleanContent}\" .",
                     IsRead = false,
                     CreatedAt = DateTime.UtcNow
                 };
-                
+
                 _context.Notifications.Add(notifyQ);
             }
 
@@ -256,6 +267,7 @@ namespace QASystem.Controllers
         }
 
         // Action chỉnh sửa câu hỏi
+
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> EditQuestion(int questionId, string title, string content, IFormFile image)
@@ -273,8 +285,15 @@ namespace QASystem.Controllers
                 return Forbid(); // Chỉ người tạo mới được chỉnh sửa
             }
 
-            question.Title = title;
-            question.Content = content;
+            // Kiểm tra Title và Content
+            if (string.IsNullOrWhiteSpace(title) || IsHtmlContentEmpty(content))
+            {
+                TempData["ErrorMessage"] = "Title và Content không được để trống.";
+                return RedirectToAction("Details", new { id = questionId });
+            }
+
+            question.Title = title.Trim();
+            question.Content = content.Trim();
 
             if (image != null)
             {
@@ -287,8 +306,25 @@ namespace QASystem.Controllers
             }
 
             await _context.SaveChangesAsync();
+            TempData["SuccessMessage"] = "Cập nhật câu hỏi thành công!";
             return RedirectToAction("Details", new { id = questionId });
         }
+
+        // Hàm phụ để kiểm tra content chỉ toàn HTML rỗng hoặc space
+        private bool IsHtmlContentEmpty(string html)
+        {
+            if (string.IsNullOrWhiteSpace(html))
+                return true;
+
+            // Xóa các thẻ HTML
+            string text = Regex.Replace(html, "<.*?>", string.Empty);
+
+            // Thay thế các ký tự không nhìn thấy như &nbsp; hoặc space
+            text = text.Replace("&nbsp;", "").Replace("\u00A0", "").Trim();
+
+            return string.IsNullOrWhiteSpace(text);
+        }
+
 
         // Action chỉnh sửa câu trả lời
         [HttpPost]
@@ -323,5 +359,101 @@ namespace QASystem.Controllers
             await _context.SaveChangesAsync();
             return RedirectToAction("Details", new { id = questionId });
         }
+
+        [HttpPost]
+        [Authorize]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> DeleteAnswer(int answerId, int questionId)
+        {
+            var user = await _userManager.GetUserAsync(User);
+            var answer = await _context.Answers.FindAsync(answerId);
+
+            if (answer == null)
+            {
+                TempData["Error"] = "Answer not found.";
+                return RedirectToAction("Details", new { id = questionId });
+            }
+
+            if (answer.UserId != user.Id)
+            {
+                TempData["Error"] = "You are not authorized to delete this answer.";
+                return Forbid();
+            }
+
+            // Remove related votes, notifications, and reports
+            var votes = _context.Votes.Where(v => v.AnswerId == answerId);
+            var notifications = _context.Notifications.Where(n => n.AnswerId == answerId);
+            var reports = _context.Reports.Where(r => r.AnswerId == answerId);
+
+            _context.Votes.RemoveRange(votes);
+            _context.Notifications.RemoveRange(notifications);
+            _context.Reports.RemoveRange(reports);
+            _context.Answers.Remove(answer);
+
+            await _context.SaveChangesAsync();
+
+            // Notify clients about the deletion
+            await _hubContext.Clients.Group($"Question_{questionId}")
+                .SendAsync("AnswerDeleted", answerId);
+
+            TempData["Success"] = "Answer deleted successfully.";
+            return RedirectToAction("Details", new { id = questionId });
+        }
+
+        [HttpPost]
+        [Authorize]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> DeleteQuestion(int questionId)
+        {
+            var user = await _userManager.GetUserAsync(User);
+            var question = await _context.Questions
+                .Include(q => q.Answers)
+                .Include(q => q.Votes)
+                .Include(q => q.Reports)
+                .Include(q => q.Notifications)
+                .Include(q => q.Tags)
+                .FirstOrDefaultAsync(q => q.QuestionId == questionId);
+
+            if (question == null)
+            {
+                TempData["Error"] = "Question not found.";
+                return RedirectToAction("Index");
+            }
+
+            if (question.UserId != user.Id)
+            {
+                TempData["Error"] = "You are not authorized to delete this question.";
+                return Forbid();
+            }
+
+            // Remove related data
+            var answerIds = question.Answers.Select(a => a.AnswerId).ToList();
+            var answerVotes = _context.Votes.Where(v => v.QuestionId == questionId || answerIds.Contains(v.AnswerId.Value));
+            var answerNotifications = _context.Notifications.Where(n => n.QuestionId == questionId || answerIds.Contains(n.AnswerId.Value));
+            var answerReports = _context.Reports.Where(r => r.QuestionId == questionId || answerIds.Contains(r.AnswerId.Value));
+
+            _context.Votes.RemoveRange(answerVotes);
+            _context.Notifications.RemoveRange(answerNotifications);
+            _context.Reports.RemoveRange(answerReports);
+            _context.Answers.RemoveRange(question.Answers);
+            //_context.Tags.RemoveRange(question.Tags);
+            question.Tags.Clear();
+            await _context.SaveChangesAsync();
+
+
+            _context.Questions.Remove(question);
+
+
+            await _context.SaveChangesAsync();
+
+            // Notify clients about the deletion
+            await _hubContext.Clients.Group($"Question_{questionId}")
+                .SendAsync("QuestionDeleted", questionId);
+
+            TempData["Success"] = "Question deleted successfully.";
+            return RedirectToAction("Index", "Home");
+        }
+
+
     }
 }

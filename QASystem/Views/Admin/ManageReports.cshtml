@@ -83,6 +83,7 @@
                             else if (report.AnswerId.HasValue)
                             {
                                 @Html.Raw(report.Answer.Content.Substring(0, Math.Min(50, report.Answer.Content.Length)))
+
                                 @(report.Answer.Content.Length > 50 ? "..." : "")
                                 if (report.Answer.IsDisabled)
                                 {

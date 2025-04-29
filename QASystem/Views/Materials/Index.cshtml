@@ -1,0 +1,118 @@
+﻿@model QASystem.ViewModels.MaterialListViewModel
+@using Microsoft.AspNetCore.Identity
+@inject UserManager<User> UserManager
+
+<div class="mt-4">
+    <div class="section-header">
+        <h4 class="mb-3">Materials</h4>
+        <div class="mb-4 d-flex align-items-center">
+            <form asp-controller="Materials" asp-action="Index" method="get" class="d-flex me-3" style="max-width: 500px;">
+                <div class="input-group">
+                    <input type="text" name="searchTerm" class="form-control" placeholder="Search by title or description" value="@Model.SearchTerm" />
+                    <button type="submit" class="btn btn-primary">Search</button>
+                    <a asp-action="Index" class="btn btn-secondary">Clear</a>
+                </div>
+                <input type="hidden" name="sortOrder" value="@Model.SortOrder" />
+                <input type="hidden" name="pageNumber" value="1" />
+            </form>
+            <div class="dropdown">
+                <button class="btn btn-outline-primary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                    Sort by: @(Model.SortOrder == "date_desc" ? "Newest First" : Model.SortOrder == "date_asc" ? "Oldest First" : Model.SortOrder == "downloads_desc" ? "Most Downloads" : "Least Downloads")
+                </button>
+                <ul class="dropdown-menu">
+                    <li>
+                        <a class="dropdown-item @(Model.SortOrder == "date_desc" ? "active" : "")" asp-action="Index" asp-route-searchTerm="@Model.SearchTerm" asp-route-sortOrder="date_desc" asp-route-pageNumber="1">
+                            Newest First
+                        </a>
+                    </li>
+                    <li>
+                        <a class="dropdown-item @(Model.SortOrder == "date_asc" ? "active" : "")" asp-action="Index" asp-route-searchTerm="@Model.SearchTerm" asp-route-sortOrder="date_asc" asp-route-pageNumber="1">
+                            Oldest First
+                        </a>
+                    </li>
+                    <li>
+                        <a class="dropdown-item @(Model.SortOrder == "downloads_desc" ? "active" : "")" asp-action="Index" asp-route-searchTerm="@Model.SearchTerm" asp-route-sortOrder="downloads_desc" asp-route-pageNumber="1">
+                            Most Downloads
+                        </a>
+                    </li>
+                    <li>
+                        <a class="dropdown-item @(Model.SortOrder == "downloads_asc" ? "active" : "")" asp-action="Index" asp-route-searchTerm="@Model.SearchTerm" asp-route-sortOrder="downloads_asc" asp-route-pageNumber="1">
+                            Least Downloads
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-9">
+            <div id="materialsList">
+                @await Html.PartialAsync("_MaterialsListPartial", Model)
+            </div>
+        </div>
+
+        <div class="col-md-3">
+            <h4 class="mb-3">Top Downloaded Materials</h4>
+            <div id="topMaterials">
+                @await Html.PartialAsync("_TopMaterialsPartial", ViewBag.TopMaterials as List<QASystem.Models.Material>)
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .card-text {
+        max-height: 3.6em;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+    }
+</style>
+
+@section Scripts {
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" />
+    <!-- Thêm SignalR client library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/6.0.1/signalr.min.js"></script>
+    <script>
+        // Kết nối với SignalR Hub
+        const connection = new signalR.HubConnectionBuilder()
+            .withUrl("/materialHub")
+            .configureLogging(signalR.LogLevel.Information)
+            .build();
+
+        // Bắt đầu kết nối
+        connection.start()
+            .then(() => console.log("Connected to MaterialHub"))
+            .catch(err => console.error("Error connecting to MaterialHub:", err));
+
+        // Xử lý thông báo từ server
+        connection.on("ReceiveMaterialUpdate", (action, materialId) => {
+            console.log(`Received update: ${action} Material ID: ${materialId}`);
+
+            // Lấy các tham số hiện tại từ URL cho danh sách chính
+            const urlParams = new URLSearchParams(window.location.search);
+            const searchTerm = urlParams.get('searchTerm') || '';
+            const sortOrder = urlParams.get('sortOrder') || 'date_desc';
+            const pageNumber = urlParams.get('pageNumber') || '1';
+
+            // Cập nhật danh sách chính
+            fetch(`/Materials/GetMaterialsPartial?searchTerm=${encodeURIComponent(searchTerm)}&sortOrder=${sortOrder}&pageNumber=${pageNumber}`)
+                .then(response => response.text())
+                .then(html => {
+                    document.getElementById('materialsList').innerHTML = html;
+                })
+                .catch(err => console.error("Error updating materials list:", err));
+
+            // Cập nhật Top Downloaded Materials
+            fetch(`/Materials/GetTopMaterialsPartial`)
+                .then(response => response.text())
+                .then(html => {
+                    document.getElementById('topMaterials').innerHTML = html;
+                })
+                .catch(err => console.error("Error updating top materials:", err));
+        });
+    </script>
+}

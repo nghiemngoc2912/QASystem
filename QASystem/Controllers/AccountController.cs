@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using QASystem.Models;
 using QASystem.Services;
+using System.Text.RegularExpressions;
 
 namespace QASystem.Controllers
 {
@@ -108,13 +109,17 @@ namespace QASystem.Controllers
             var userMaterials = await _context.Materials
                 .Where(m => m.UserId == user.Id)
                 .OrderByDescending(m => m.CreatedAt)
-                .Take(4) 
+                .Take(4)
                 .ToListAsync();
-            // Tính tổng số tài liệu và tổng lượt tải
-            var totalMaterials = await _context.Materials
+            var userMaterialsCount = await _context.Materials
                 .Where(m => m.UserId == user.Id)
-                .CountAsync();
+                .OrderByDescending(m => m.CreatedAt)
+                .ToListAsync();
 
+            ViewBag.UserMaterials = userMaterials;
+            ViewBag.UserQuestions = userQuestions;
+            ViewBag.TotalMaterials = userMaterialsCount.Count;
+            ViewBag.TotalDownloads = userMaterialsCount.Sum(m => m.Downloads);
             // Gộp và sắp xếp hoạt động
             recentActivities.AddRange(recentQuestions);
             recentActivities.AddRange(recentAnswers);
@@ -140,14 +145,28 @@ namespace QASystem.Controllers
                 return NotFound();
             }
 
-            if (string.IsNullOrEmpty(email))
+            if (string.IsNullOrWhiteSpace(email))
             {
                 TempData["Error"] = "Email is required.";
+                return View("Profile", user);
+            }
+            //check email format
+            var regex = new Regex(@"^[^@\s]+@[^@\s]+\.[^@\s]+$");
+            if (!regex.IsMatch(email))
+            {
+                TempData["Error"] = "Invalid Email";
                 return View("Profile", user);
             }
 
             if (user.Email != email)
             {
+                //check if email exist
+                var existingUser = await _userManager.FindByEmailAsync(email);
+                if (existingUser != null)
+                {
+                    TempData["Error"] = "Email is used by another user.";
+                    return View("Profile", user);
+                }
                 var setEmailResult = await _userManager.SetEmailAsync(user, email);
                 if (!setEmailResult.Succeeded)
                 {
@@ -296,6 +315,9 @@ namespace QASystem.Controllers
             {
                 return RedirectToAction("Index", "Home");
             }
+
+            ViewBag.userName = userName;
+            ViewBag.password = password;
             ModelState.AddModelError("", "Invalid username or password.");
             return View();
         }
@@ -429,15 +451,18 @@ namespace QASystem.Controllers
                 .OrderByDescending(m => m.CreatedAt)
                 .Take(4)
                 .ToListAsync();
-
+            var userMaterialsCount = await _context.Materials
+                .Where(m => m.UserId == user.Id)
+                .OrderByDescending(m => m.CreatedAt)
+                .ToListAsync();
             var userQuestions = _context.Questions
                 .Where(q => q.UserId == id)
                 .ToList();
 
             ViewBag.UserMaterials = userMaterials;
             ViewBag.UserQuestions = userQuestions;
-            ViewBag.TotalMaterials = userMaterials.Count;
-            ViewBag.TotalDownloads = userMaterials.Sum(m => m.Downloads);
+            ViewBag.TotalMaterials = userMaterialsCount.Count;
+            ViewBag.TotalDownloads = userMaterialsCount.Sum(m => m.Downloads);
 
             return View(user);
         }
