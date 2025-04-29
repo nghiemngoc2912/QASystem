@@ -178,12 +178,12 @@ namespace QASystem.Controllers
             if (avatar != null && avatar.Length > 0)
             {
                 var fileName = Guid.NewGuid().ToString() + Path.GetExtension(avatar.FileName);
-                var filePath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot/images", fileName);
+                var filePath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot/images/avatars", fileName);
                 using (var stream = new FileStream(filePath, FileMode.Create))
                 {
                     await avatar.CopyToAsync(stream);
                 }
-                user.AvatarUrl = "/images/" + fileName;
+                user.AvatarUrl = "/images/avatars/" + fileName;
                 var updateResult = await _userManager.UpdateAsync(user);
                 if (!updateResult.Succeeded)
                 {
