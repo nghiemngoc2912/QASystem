@@ -15,14 +15,16 @@ namespace QASystem.Controllers
         private readonly UserManager<User> _userManager;
         private readonly IHubContext<QuestionHub> _hubContext;
 		private readonly IHubContext<NotificationHub> _notiContext;
-		private readonly IEmailService _emailService;
-        public QuestionsController(QasystemContext context, UserManager<User> userManager, IHubContext<QuestionHub> hubContext, IEmailService emailService, IHubContext<NotificationHub> notiContext)
+        private readonly IHubContext<ReportHub> _reportContext;
+        private readonly IEmailService _emailService;
+        public QuestionsController(QasystemContext context, UserManager<User> userManager, IHubContext<QuestionHub> hubContext, IEmailService emailService, IHubContext<NotificationHub> notiContext, IHubContext<ReportHub> reportContext)
         {
             _context = context;
             _userManager = userManager;
             _hubContext = hubContext;
             _emailService = emailService;
             _notiContext = notiContext;
+            _reportContext = reportContext;
         }
         public async Task<IActionResult> Details(int id, int page = 1)
         {
@@ -163,45 +165,61 @@ namespace QASystem.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Report(int? questionId, int? answerId, string reason)
         {
+            Console.WriteLine("************************************************************************************************************************************************************************************************************************");
+            Console.WriteLine($"Question ID : {questionId}, AnswerID : {answerId}");
+            // Kiểm tra phải cung cấp questionId hoặc answerId
             if (!questionId.HasValue && !answerId.HasValue)
             {
                 TempData["Error"] = "Must provide either questionId or answerId.";
                 return RedirectToAction("Details", new { id = questionId ?? (await _context.Answers.FindAsync(answerId))?.QuestionId ?? 0 });
             }
 
+            // Kiểm tra lý do báo cáo
             if (string.IsNullOrEmpty(reason))
             {
                 TempData["Error"] = "Reason for reporting is required.";
-                return RedirectToAction("Details", new { id = questionId ?? (await _context.Answers.FindAsync(answerId)).QuestionId });
+                return RedirectToAction("Details", new { id = questionId ?? (await _context.Answers.FindAsync(answerId))?.QuestionId });
             }
 
+            // Lấy thông tin người dùng
             var user = await _userManager.GetUserAsync(User);
+            if (user == null)
+            {
+                TempData["Error"] = "User not found.";
+                return RedirectToAction("Details", new { id = questionId ?? (await _context.Answers.FindAsync(answerId))?.QuestionId });
+            }
+
+            // Kiểm tra báo cáo trùng lặp
             var existingReport = await _context.Reports
                 .FirstOrDefaultAsync(r => r.UserId == user.Id &&
                                          (questionId.HasValue ? r.QuestionId == questionId : r.AnswerId == answerId));
-
             if (existingReport != null)
             {
                 TempData["Error"] = "You have already reported this content.";
-                return RedirectToAction("Details", new { id = questionId ?? (await _context.Answers.FindAsync(answerId)).QuestionId });
+                return RedirectToAction("Details", new { id = questionId ?? (await _context.Answers.FindAsync(answerId))?.QuestionId });
             }
 
+            // Tạo báo cáo mới
             var report = new Report
             {
                 UserId = user.Id,
                 QuestionId = questionId,
                 AnswerId = answerId,
-                Reason = reason,
-                ReportedAt = DateTime.Now
+                Reason = reason.Trim(),
+                ReportedAt = DateTime.UtcNow,
+                Status = "Pending" 
             };
 
+            // Lưu báo cáo
             _context.Reports.Add(report);
             await _context.SaveChangesAsync();
 
-
+            // Gửi email thông báo
             if (questionId.HasValue)
             {
-                var question = await _context.Questions.Include(q => q.User).FirstOrDefaultAsync(q => q.QuestionId == questionId);
+                var question = await _context.Questions
+                    .Include(q => q.User)
+                    .FirstOrDefaultAsync(q => q.QuestionId == questionId);
                 if (question != null)
                 {
                     await _emailService.SendEmailAsync(
@@ -216,7 +234,9 @@ namespace QASystem.Controllers
             }
             else if (answerId.HasValue)
             {
-                var answer = await _context.Answers.Include(a => a.User).FirstOrDefaultAsync(a => a.AnswerId == answerId);
+                var answer = await _context.Answers
+                    .Include(a => a.User)
+                    .FirstOrDefaultAsync(a => a.AnswerId == answerId);
                 if (answer != null)
                 {
                     await _emailService.SendEmailAsync(
@@ -229,11 +249,9 @@ namespace QASystem.Controllers
                     );
                 }
             }
-
-
-
+            await _reportContext.Clients.All.SendAsync("ReceiveReport");
             TempData["Success"] = "Your report has been submitted.";
-            var redirectId = questionId ?? (await _context.Answers.FindAsync(answerId)).QuestionId;
+            var redirectId = questionId ?? (await _context.Answers.FindAsync(answerId))?.QuestionId;
             return RedirectToAction("Details", new { id = redirectId });
         }
 
@@ -305,7 +323,5 @@ namespace QASystem.Controllers
             await _context.SaveChangesAsync();
             return RedirectToAction("Details", new { id = questionId });
         }
-
-
     }
 }

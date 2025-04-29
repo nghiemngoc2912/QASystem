@@ -1,6 +1,6 @@
-﻿// Models/Report.cs
-namespace QASystem.Models
+﻿namespace QASystem.Models
 {
+
     public class Report
     {
         public int ReportId { get; set; }
@@ -9,6 +9,7 @@ namespace QASystem.Models
         public int? AnswerId { get; set; }       // Câu trả lời bị báo cáo (nullable)
         public string Reason { get; set; }       // Lý do báo cáo
         public DateTime ReportedAt { get; set; } // Thời gian báo cáo
+        public string Status { get; set; } // Trạng thái báo cáo
 
         public virtual User User { get; set; }
         public virtual Question Question { get; set; }

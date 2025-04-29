@@ -68,6 +68,7 @@ app.MapControllerRoute(
     name: "default",
     pattern: "{controller=Home}/{action=Index}/{id?}");
 app.MapHub<QuestionHub>("/questionHub"); // Định nghĩa route cho Hub
+app.MapHub<ReportHub>("/reportHub"); 
 app.MapHub<NotificationHub>("/notificationHub");
 
 app.Run();

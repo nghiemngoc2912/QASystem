@@ -5,6 +5,7 @@
 
 <div class="container mt-4">
     <h2>Manage Reports</h2>
+
     @if (TempData["Success"] != null)
     {
         <div class="alert alert-success" role="alert">
@@ -18,16 +19,49 @@
         </div>
     }
 
+    <!-- Filter, search, sort form -->
+    <form asp-action="ManageReports" method="get" class="mb-4">
+        <div class="row">
+            <!-- Filter by status -->
+            <div class="col-md-3">
+                <label class="form-label">Status</label>
+                <select name="status" class="form-select">
+                    <option value="">All</option>
+                    <option value="Pending" selected="@(ViewBag.Status == "Pending")">Pending</option>
+                    <option value="Accepted" selected="@(ViewBag.Status == "Accepted")">Accepted</option>
+                    <option value="Disabled" selected="@(ViewBag.Status == "Disabled")">Rejected</option>
+                </select>
+            </div>
+            <!-- Search by reason -->
+            <div class="col-md-3">
+                <label class="form-label">Reason</label>
+                <input type="text" name="search" class="form-control" value="@ViewBag.Search" placeholder="Enter reason..." />
+            </div>
+            <!-- Sort -->
+            <div class="col-md-3">
+                <label class="form-label">Sort by time</label>
+                <select name="sort" class="form-select">
+                    <option value="desc" selected="@(ViewBag.Sort == "desc")">Newest</option>
+                    <option value="asc" selected="@(ViewBag.Sort == "asc")">Oldest</option>
+                </select>
+            </div>
+            <div class="col-md-3 align-self-end">
+                <button type="submit" class="btn btn-primary">Apply</button>
+            </div>
+        </div>
+    </form>
+
     @if (Model.Any())
     {
         <table class="table table-striped">
             <thead>
                 <tr>
-                    <th>Reported By</th>
+                    <th>Reporter</th>
                     <th>Content</th>
                     <th>Reason</th>
                     <th>Reported At</th>
-                    <th>Action</th>
+                    <th>Status</th>
+                    <th>Actions</th>
                 </tr>
             </thead>
             <tbody>
@@ -49,7 +83,6 @@
                             else if (report.AnswerId.HasValue)
                             {
                                 @Html.Raw(report.Answer.Content.Substring(0, Math.Min(50, report.Answer.Content.Length)))
-
                                 @(report.Answer.Content.Length > 50 ? "..." : "")
                                 if (report.Answer.IsDisabled)
                                 {
@@ -60,32 +93,107 @@
                         <td>@report.Reason</td>
                         <td>@report.ReportedAt.ToString("MMMM dd, yyyy HH:mm")</td>
                         <td>
-                            @if (report.QuestionId.HasValue && !report.Question.IsDisabled)
+                            @switch (report.Status)
                             {
-                                <form asp-controller="Admin" asp-action="DisableContent" method="post" class="d-inline">
-                                    <input type="hidden" name="questionId" value="@report.QuestionId" />
-                                    <button type="submit" class="btn btn-danger btn-sm">Disable</button>
-                                </form>
+                                case "Pending":
+                                    <span class="badge bg-warning">Pending</span>
+                                    break;
+                                case "Accepted":
+                                    <span class="badge bg-success">Accepted</span>
+                                    break;
+                                case "Disabled":
+                                    <span class="badge bg-danger">Rejected</span>
+                                    break;
+                                default:
+                                    <span class="badge bg-secondary">Unknown</span>
+                                    break;
                             }
-                            else if (report.AnswerId.HasValue && !report.Answer.IsDisabled)
+                        </td>
+                        <td>
+                            @if (report.Status == "Pending")
                             {
-                                <form asp-controller="Admin" asp-action="DisableContent" method="post" class="d-inline">
-                                    <input type="hidden" name="answerId" value="@report.AnswerId" />
-                                    <button type="submit" class="btn btn-danger btn-sm">Disable</button>
+                                <form asp-action="EditReport" method="post" class="d-inline">
+                                    <input type="hidden" name="reportId" value="@report.ReportId" />
+                                    <button type="submit" name="status" value="Accepted" class="btn btn-success btn-sm">Accept</button>
+                                    <button type="submit" name="status" value="Disabled" class="btn btn-danger btn-sm">Reject</button>
                                 </form>
                             }
                             else
                             {
-                                <span class="text-muted">Already Disabled</span>
+                                <span class="text-muted">Processed</span>
                             }
                         </td>
                     </tr>
                 }
             </tbody>
         </table>
+
+        <!-- Manual pagination -->
+        <nav aria-label="Page navigation">
+            <ul class="pagination justify-content-center">
+                <!-- Previous -->
+                @if (ViewBag.CurrentPage > 1)
+                {
+                    <li class="page-item">
+                        <a class="page-link" href="@Url.Action("ManageReports", new { page = ViewBag.CurrentPage - 1, status = ViewBag.Status, search = ViewBag.Search, sort = ViewBag.Sort })">Previous</a>
+                    </li>
+                }
+                else
+                {
+                    <li class="page-item disabled">
+                        <span class="page-link">Previous</span>
+                    </li>
+                }
+
+                <!-- Page numbers -->
+                @{
+                    int startPage = Math.Max(1, ViewBag.CurrentPage - 2);
+                    int endPage = Math.Min(ViewBag.TotalPages, ViewBag.CurrentPage + 2);
+                    if (endPage - startPage < 4)
+                    {
+                        startPage = Math.Max(1, endPage - 4);
+                        endPage = Math.Min(ViewBag.TotalPages, startPage + 4);
+                    }
+                }
+                @for (int i = startPage; i <= endPage; i++)
+                {
+                    <li class="page-item @(i == ViewBag.CurrentPage ? "active" : "")">
+                        <a class="page-link" href="@Url.Action("ManageReports", new { page = i, status = ViewBag.Status, search = ViewBag.Search, sort = ViewBag.Sort })">@i</a>
+                    </li>
+                }
+
+                <!-- Next -->
+                @if (ViewBag.CurrentPage < ViewBag.TotalPages)
+                {
+                    <li class="page-item">
+                        <a class="page-link" href="@Url.Action("ManageReports", new { page = ViewBag.CurrentPage + 1, status = ViewBag.Status, search = ViewBag.Search, sort = ViewBag.Sort })">Next</a>
+                    </li>
+                }
+                else
+                {
+                    <li class="page-item disabled">
+                        <span class="page-link">Next</span>
+                    </li>
+                }
+            </ul>
+        </nav>
     }
     else
     {
         <p class="text-muted">No reports available.</p>
     }
 </div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/7.0.5/signalr.min.js"></script>
+<script>
+    var connection = new signalR.HubConnectionBuilder().withUrl("/reportHub").build();
+
+    connection.on("ReceiveReport", function () {
+        alert("New Report");
+        location.reload(); // Tải lại trang để cập nhật
+    });
+
+    connection.start().catch(function (err) {
+        return console.error(err.toString());
+    });
+</script>
+
