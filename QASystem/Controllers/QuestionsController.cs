@@ -107,6 +107,19 @@ namespace QASystem.Controllers
         [HttpPost]
         public async Task<IActionResult> Answer(int questionId, string content, IFormFile image)
         {
+            // 1. Loại bỏ tag HTML, decode & trim
+            var cleanContent = RemoveHtmlTags(content ?? string.Empty);
+            cleanContent = WebUtility.HtmlDecode(cleanContent).Trim();
+
+            // 2. Nếu sau khi clean không còn gì thì trả về trang Details với thông báo lỗi
+            if (string.IsNullOrWhiteSpace(cleanContent))
+            {
+                // Có thể dùng TempData để hiển thị flash message
+                TempData["ErrorMessage"] = "Vui lòng nhập nội dung trả lời.";
+                return RedirectToAction("Details", new { id = questionId });
+            }
+
+            // 3. Tạo answer bình thường (vẫn dùng 'content' gốc để lưu nếu bạn muốn giữ HTML)
             var user = await _userManager.GetUserAsync(User);
             var answer = new Answer
             {
@@ -116,52 +129,44 @@ namespace QASystem.Controllers
                 CreatedAt = DateTime.UtcNow
             };
 
+            // 4. Xử lý upload image…
             if (image != null)
             {
                 var filePath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot/uploads", image.FileName);
                 using (var stream = new FileStream(filePath, FileMode.Create))
-                {
                     await image.CopyToAsync(stream);
-                }
                 answer.ImageUrl = "/uploads/" + image.FileName;
             }
 
             _context.Answers.Add(answer);
             await _context.SaveChangesAsync();
 
-            //Add Answer ID
             var answerId = answer.AnswerId;
 
-            //Add notification
+            // 5. Thêm notification nếu cần…
             var question = await _context.Questions
                 .Include(q => q.User)
                 .FirstOrDefaultAsync(q => q.QuestionId == questionId);
 
-            // Notify chủ question (nếu muốn)
             if (question != null && question.UserId != user.Id)
             {
-                var cleanContent = RemoveHtmlTags(content);
-                cleanContent = WebUtility.HtmlDecode(cleanContent);
-
                 var notifyQ = new Notification
                 {
                     Type = NotificationType.CommentOnQuestion,
                     QuestionId = questionId,
                     AnswerId = answerId,
                     UserId = question.UserId,
-                    Message = $"{user.UserName} đã bình luận \"{cleanContent}\" .",
+                    Message = $"{user.UserName} đã bình luận \"{cleanContent}\".",
                     IsRead = false,
                     CreatedAt = DateTime.UtcNow
                 };
-                
                 _context.Notifications.Add(notifyQ);
+                await _context.SaveChangesAsync();
+
+                await _notiContext.Clients.Group(question.UserId.ToString())
+                    .SendAsync("NewNotification");
             }
 
-            await _context.SaveChangesAsync();
-
-            await _notiContext.Clients.Group(question.UserId.ToString()).SendAsync("NewNotification");
-
-            // Gửi thông báo SignalR
             await _hubContext.Clients.Group($"Question_{questionId}")
                 .SendAsync("ReceiveAnswer", user.UserName, content);
 
