@@ -80,7 +80,7 @@ namespace QASystem.Controllers
             }
             else
             {
-                vote.VoteType = voteType;
+                vote.VoteType = vote.VoteType == voteType ? 0 : voteType;
             }
 
             await _context.SaveChangesAsync();
