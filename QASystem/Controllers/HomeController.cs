@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using QASystem.Models;
 using System.Diagnostics;
+using System.Text.RegularExpressions;
 
 namespace QASystem.Controllers
 {
@@ -126,12 +127,27 @@ namespace QASystem.Controllers
             return View(questions);
         }
 
+        // Hàm phụ để kiểm tra content chỉ toàn HTML rỗng hoặc space
+        private bool IsHtmlContentEmpty(string html)
+        {
+            if (string.IsNullOrWhiteSpace(html))
+                return true;
+
+            // Xóa các thẻ HTML
+            string text = Regex.Replace(html, "<.*?>", string.Empty);
+
+            // Thay thế các ký tự không nhìn thấy như &nbsp; hoặc space
+            text = text.Replace("&nbsp;", "").Replace("\u00A0", "").Trim();
+
+            return string.IsNullOrWhiteSpace(text);
+        }
+
         [HttpPost]
         [Authorize]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> CreateQuestion(string title, string content, string tags, IFormFile image)
         {
-            if (string.IsNullOrWhiteSpace(title) || string.IsNullOrWhiteSpace(content))
+            if (string.IsNullOrWhiteSpace(title) || IsHtmlContentEmpty(content))
             {
                 TempData["Error"] = "Title and content are required.";
                 return RedirectToAction("Index");
