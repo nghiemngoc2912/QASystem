@@ -255,68 +255,98 @@ namespace QASystem.Controllers
             }
 
             // Kiểm tra trạng thái hợp lệ
-            if (status != "Accepted" && status != "Disabled")
+            if (status != "Accepted" && status != "Disabled" && status != "Pending")
             {
                 TempData["Error"] = "Trạng thái không hợp lệ.";
                 return RedirectToAction("ManageReports");
             }
 
-            // Gán trạng thái trực tiếp
+            // Lưu trạng thái cũ để kiểm tra thay đổi
+            var oldStatus = report.Status;
             report.Status = status;
 
             try
             {
-                if (report.QuestionId.HasValue)
+                // Chỉ cập nhật trạng thái nội dung nếu đang chuyển từ Pending sang Accepted/Disabled
+                // hoặc từ Accepted/Disabled về Pending
+                if ((oldStatus == "Pending" && (status == "Accepted" || status == "Disabled")) ||
+                    ((oldStatus == "Accepted" || oldStatus == "Disabled") && status == "Pending"))
                 {
-                    var question = report.Question;
-                    if (question == null)
+                    if (report.QuestionId.HasValue)
                     {
-                        TempData["Error"] = "Câu hỏi không tồn tại.";
-                        return RedirectToAction("ManageReports");
+                        var question = report.Question;
+                        if (question == null)
+                        {
+                            TempData["Error"] = "Câu hỏi không tồn tại.";
+                            return RedirectToAction("ManageReports");
+                        }
+
+                        // Nếu chuyển về Pending, bật lại nội dung
+                        // Nếu chuyển sang Accepted, tắt nội dung
+                        question.IsDisabled = status == "Accepted";
+
+                        // Chỉ gửi email nếu thực sự thay đổi trạng thái
+                        if (oldStatus != status)
+                        {
+                            var emailSubject = status == "Accepted"
+                                ? "Câu hỏi của bạn đã bị vô hiệu hóa"
+                                : status == "Pending"
+                                    ? "Câu hỏi của bạn đã được khôi phục (báo cáo đang xem xét lại)"
+                                    : "Câu hỏi của bạn đã được khôi phục";
+                            var emailBody = status == "Accepted"
+                                ? $"Kính gửi {question.User.UserName},<br/><br/>" +
+                                  $"Câu hỏi '<strong>{question.Title}</strong>' của bạn đã bị vô hiệu hóa do vi phạm quy định.<br/>" +
+                                  "Vui lòng xem lại hướng dẫn cộng đồng. Nếu có thắc mắc, liên hệ đội hỗ trợ.<br/><br/>" +
+                                  "Trân trọng,<br/>QASystem Team"
+                                : status == "Pending"
+                                    ? $"Kính gửi {question.User.UserName},<br/><br/>" +
+                                      $"Câu hỏi '<strong>{question.Title}</strong>' của bạn đang được xem xét lại sau báo cáo.<br/>" +
+                                      "Chúng tôi sẽ thông báo kết quả sau khi hoàn tất đánh giá.<br/><br/>" +
+                                      "Trân trọng,<br/>QASystem Team"
+                                    : $"Kính gửi {question.User.UserName},<br/><br/>" +
+                                      $"Câu hỏi '<strong>{question.Title}</strong>' của bạn đã được khôi phục sau khi xem xét báo cáo.<br/>" +
+                                      "Cảm ơn bạn đã tuân thủ hướng dẫn cộng đồng.<br/><br/>" +
+                                      "Trân trọng,<br/>QASystem Team";
+
+                            await _emailService.SendEmailAsync(question.User.Email, emailSubject, emailBody);
+                        }
                     }
-
-                    question.IsDisabled = status == "Accepted";
-
-                    var emailSubject = status == "Accepted"
-                        ? "Câu hỏi của bạn đã bị vô hiệu hóa"
-                        : "Câu hỏi của bạn đã được khôi phục";
-                    var emailBody = status == "Accepted"
-                        ? $"Kính gửi {question.User.UserName},<br/><br/>" +
-                          $"Câu hỏi '<strong>{question.Title}</strong>' của bạn đã bị vô hiệu hóa do vi phạm quy định.<br/>" +
-                          "Vui lòng xem lại hướng dẫn cộng đồng. Nếu có thắc mắc, liên hệ đội hỗ trợ.<br/><br/>" +
-                          "Trân trọng,<br/>QASystem Team"
-                        : $"Kính gửi {question.User.UserName},<br/><br/>" +
-                          $"Câu hỏi '<strong>{question.Title}</strong>' của bạn đã được khôi phục sau khi xem xét báo cáo.<br/>" +
-                          "Cảm ơn bạn đã tuân thủ hướng dẫn cộng đồng.<br/><br/>" +
-                          "Trân trọng,<br/>QASystem Team";
-
-                    await _emailService.SendEmailAsync(question.User.Email, emailSubject, emailBody);
-                }
-                else if (report.AnswerId.HasValue)
-                {
-                    var answer = report.Answer;
-                    if (answer == null)
+                    else if (report.AnswerId.HasValue)
                     {
-                        TempData["Error"] = "Câu trả lời không tồn tại.";
-                        return RedirectToAction("ManageReports");
+                        var answer = report.Answer;
+                        if (answer == null)
+                        {
+                            TempData["Error"] = "Câu trả lời không tồn tại.";
+                            return RedirectToAction("ManageReports");
+                        }
+
+                        answer.IsDisabled = status == "Accepted";
+
+                        if (oldStatus != status)
+                        {
+                            var emailSubject = status == "Accepted"
+                                ? "Câu trả lời của bạn đã bị vô hiệu hóa"
+                                : status == "Pending"
+                                    ? "Câu trả lời của bạn đang được xem xét lại"
+                                    : "Câu trả lời của bạn đã được khôi phục";
+                            var emailBody = status == "Accepted"
+                                ? $"Kính gửi {answer.User.UserName},<br/><br/>" +
+                                  $"Câu trả lời của bạn đã bị vô hiệu hóa do vi phạm quy định.<br/>" +
+                                  "Vui lòng xem lại hướng dẫn cộng đồng. Nếu có thắc mắc, liên hệ đội hỗ trợ.<br/><br/>" +
+                                  "Trân trọng,<br/>QASystem Team"
+                                : status == "Pending"
+                                    ? $"Kính gửi {answer.User.UserName},<br/><br/>" +
+                                      $"Câu trả lời của bạn đang được xem xét lại sau báo cáo.<br/>" +
+                                      "Chúng tôi sẽ thông báo kết quả sau khi hoàn tất đánh giá.<br/><br/>" +
+                                      "Trân trọng,<br/>QASystem Team"
+                                    : $"Kính gửi {answer.User.UserName},<br/><br/>" +
+                                      $"Câu trả lời của bạn đã được khôi phục sau khi xem xét báo cáo.<br/>" +
+                                      "Cảm ơn bạn đã tuân thủ hướng dẫn cộng đồng.<br/><br/>" +
+                                      "Trân trọng,<br/>QASystem Team";
+
+                            await _emailService.SendEmailAsync(answer.User.Email, emailSubject, emailBody);
+                        }
                     }
-
-                    answer.IsDisabled = status == "Accepted";
-
-                    var emailSubject = status == "Accepted"
-                        ? "Câu trả lời của bạn đã bị vô hiệu hóa"
-                        : "Câu trả lời của bạn đã được khôi phục";
-                    var emailBody = status == "Accepted"
-                        ? $"Kính gửi {answer.User.UserName},<br/><br/>" +
-                          $"Câu trả lời của bạn đã bị vô hiệu hóa do vi phạm quy định.<br/>" +
-                          "Vui lòng xem lại hướng dẫn cộng đồng. Nếu có thắc mắc, liên hệ đội hỗ trợ.<br/><br/>" +
-                          "Trân trọng,<br/>QASystem Team"
-                        : $"Kính gửi {answer.User.UserName},<br/><br/>" +
-                          $"Câu trả lời của bạn đã được khôi phục sau khi xem xét báo cáo.<br/>" +
-                          "Cảm ơn bạn đã tuân thủ hướng dẫn cộng đồng.<br/><br/>" +
-                          "Trân trọng,<br/>QASystem Team";
-
-                    await _emailService.SendEmailAsync(answer.User.Email, emailSubject, emailBody);
                 }
 
                 // Lưu thay đổi
@@ -325,7 +355,7 @@ namespace QASystem.Controllers
                 // Gửi thông báo SignalR
                 await _reportContext.Clients.All.SendAsync("ReportAccept");
 
-                TempData["Success"] = $"Báo cáo đã được {(status == "Accepted" ? "chấp nhận" : "từ chối")}.";
+                TempData["Success"] = $"Báo cáo đã được cập nhật thành: {(status == "Accepted" ? "chấp nhận" : status == "Disabled" ? "từ chối" : "đang chờ xử lý")}.";
             }
             catch (Exception ex)
             {

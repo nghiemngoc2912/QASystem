@@ -56,7 +56,16 @@
 
         function uploadFile(file) {
             // Kiểm tra loại file
-            const allowedTypes = ["application/pdf", "image/jpeg", "image/png", "application/msword", "application/vnd.openxmlformats-officedocument.wordprocessingml.document"];
+            const allowedTypes = [
+            "application/pdf",
+            "image/jpeg",
+            "image/png",
+            "application/msword",
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document", // .docx
+            "application/vnd.ms-excel", // .xls
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", // .xlsx
+            "text/plain" // .txt
+        ];
             if (!allowedTypes.includes(file.type)) {
                 alert("Only PDF, JPEG, PNG, and DOC/DOCX files are allowed.");
                 return;

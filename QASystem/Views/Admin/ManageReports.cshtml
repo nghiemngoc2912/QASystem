@@ -111,18 +111,15 @@
                             }
                         </td>
                         <td>
-                            @if (report.Status == "Pending")
-                            {
-                                <form asp-action="EditReport" method="post" class="d-inline">
-                                    <input type="hidden" name="reportId" value="@report.ReportId" />
-                                    <button type="submit" name="status" value="Accepted" class="btn btn-success btn-sm">Accept</button>
-                                    <button type="submit" name="status" value="Disabled" class="btn btn-danger btn-sm">Reject</button>
-                                </form>
-                            }
-                            else
-                            {
-                                <span class="text-muted">Processed</span>
-                            }
+                            <form asp-action="EditReport" method="post" class="d-inline">
+                                <input type="hidden" name="reportId" value="@report.ReportId" />
+                                <button type="submit" name="status" value="Accepted" class="btn btn-success btn-sm">Accept</button>
+                                <button type="submit" name="status" value="Disabled" class="btn btn-danger btn-sm">Reject</button>
+                                @if (report.Status != "Pending")
+                                {
+                                    <button type="submit" name="status" value="Pending" class="btn btn-warning btn-sm">Reset to Pending</button>
+                                }
+                            </form>
                         </td>
                     </tr>
                 }
