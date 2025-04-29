@@ -1,10 +1,8 @@
 ﻿@model List<QASystem.Models.User>
 @using QASystem.Models
 @using Microsoft.AspNetCore.Identity
-@using System.Linq
 @{
     ViewData["Title"] = "Manage Users";
-    var allRoles = ViewBag.AllRoles as List<IdentityRole<int>>;
 }
 
 <div class="container mt-4">
@@ -22,6 +20,22 @@
         </div>
     }
 
+    <!-- Sorting form -->
+    <form asp-action="ManageUsers" method="get" class="mb-4">
+        <div class="row">
+            <div class="col-md-3">
+                <label class="form-label">Sort by Username</label>
+                <select name="sort" class="form-select">
+                    <option value="asc" selected="@(ViewBag.Sort == "asc")">Ascending</option>
+                    <option value="desc" selected="@(ViewBag.Sort == "desc")">Descending</option>
+                </select>
+            </div>
+            <div class="col-md-3 align-self-end">
+                <button type="submit" class="btn btn-primary">Apply</button>
+            </div>
+        </div>
+    </form>
+
     @if (Model.Any())
     {
         <table class="table table-striped">
@@ -29,7 +43,7 @@
                 <tr>
                     <th>Username</th>
                     <th>Email</th>
-                    <th>Roles</th>
+                    <th>Role</th>
                     <th>Status</th>
                     <th>Actions</th>
                 </tr>
@@ -40,11 +54,11 @@
                     var roles = ViewBag.UserRoles != null && ViewBag.UserRoles.ContainsKey(user.Id)
                     ? ViewBag.UserRoles[user.Id]
                     : new List<string>();
-                    var currentRole = roles.Count > 0 ? roles[0] : "";
+                    var currentRole = roles.Count > 0 ? roles[0] : "User";
                     <tr>
                         <td>@user.UserName</td>
                         <td>@user.Email</td>
-                        <td>@string.Join(", ", roles)</td>
+                        <td>@currentRole</td>
                         <td>@(user.LockoutEnd.HasValue && user.LockoutEnd > DateTime.UtcNow ? "Locked" : "Active")</td>
                         <td>
                             @if (user.LockoutEnd.HasValue && user.LockoutEnd > DateTime.UtcNow)
@@ -65,7 +79,7 @@
                                 Edit Role
                             </button>
 
-                            <!-- Modal chỉnh sửa role -->
+                            <!-- Edit role modal -->
                             <div class="modal fade" id="roleModal_@user.Id" tabindex="-1" aria-labelledby="roleModalLabel_@user.Id" aria-hidden="true">
                                 <div class="modal-dialog">
                                     <div class="modal-content">
@@ -78,24 +92,14 @@
                                                 <input type="hidden" name="userId" value="@user.Id" />
                                                 <div class="mb-3">
                                                     <label class="form-label">Role</label>
-                                                    @if (allRoles != null && allRoles.Any())
-                                                    {
-                                                        foreach (var role in allRoles)
-                                                        {
-                                                            <div class="form-check">
-                                                                <input type="radio" class="form-check-input" name="role" value="@role.Name" @(currentRole == role.Name ? "checked" : "") />
-                                                                <label class="form-check-label">@role.Name</label>
-                                                            </div>
-                                                        }
-                                                        <div class="form-check">
-                                                            <input type="radio" class="form-check-input" name="role" value="" @(string.IsNullOrEmpty(currentRole) ? "checked" : "") />
-                                                            <label class="form-check-label">No Role</label>
-                                                        </div>
-                                                    }
-                                                    else
-                                                    {
-                                                        <p class="text-muted">No roles available.</p>
-                                                    }
+                                                    <div class="form-check">
+                                                        <input type="radio" class="form-check-input" name="role" value="Admin" @(currentRole == "Admin" ? "checked" : "") required />
+                                                        <label class="form-check-label">Admin</label>
+                                                    </div>
+                                                    <div class="form-check">
+                                                        <input type="radio" class="form-check-input" name="role" value="User" @(currentRole == "User" ? "checked" : "") required />
+                                                        <label class="form-check-label">User</label>
+                                                    </div>
                                                 </div>
                                                 <button type="submit" class="btn btn-primary w-100">Save Changes</button>
                                             </form>
@@ -108,6 +112,53 @@
                 }
             </tbody>
         </table>
+
+        <!-- Manual pagination -->
+        <nav aria-label="Page navigation">
+            <ul class="pagination justify-content-center">
+                @if (ViewBag.CurrentPage > 1)
+                {
+                    <li class="page-item">
+                        <a class="page-link" href="@Url.Action("ManageUsers", new { page = ViewBag.CurrentPage - 1, sort = ViewBag.Sort })">Previous</a>
+                    </li>
+                }
+                else
+                {
+                    <li class="page-item disabled">
+                        <span class="page-link">Previous</span>
+                    </li>
+                }
+
+                @{
+                    int startPage = Math.Max(1, ViewBag.CurrentPage - 2);
+                    int endPage = Math.Min(ViewBag.TotalPages, ViewBag.CurrentPage + 2);
+                    if (endPage - startPage < 4)
+                    {
+                        startPage = Math.Max(1, endPage - 4);
+                        endPage = Math.Min(ViewBag.TotalPages, startPage + 4);
+                    }
+                }
+                @for (int i = startPage; i <= endPage; i++)
+                {
+                    <li class="page-item @(i == ViewBag.CurrentPage ? "active" : "")">
+                        <a class="page-link" href="@Url.Action("ManageUsers", new { page = i, sort = ViewBag.Sort })">@i</a>
+                    </li>
+                }
+
+                @if (ViewBag.CurrentPage < ViewBag.TotalPages)
+                {
+                    <li class="page-item">
+                        <a class="page-link" href="@Url.Action("ManageUsers", new { page = ViewBag.CurrentPage + 1, sort = ViewBag.Sort })">Next</a>
+                    </li>
+                }
+                else
+                {
+                    <li class="page-item disabled">
+                        <span class="page-link">Next</span>
+                    </li>
+                }
+            </ul>
+        </nav>
     }
     else
     {

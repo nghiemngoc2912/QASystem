@@ -17,7 +17,6 @@ namespace QASystem.Controllers
         private readonly UserManager<User> _userManager;
         private readonly IHubContext<QuestionHub> _hubContext;
         private readonly IHubContext<NotificationHub> _notiContext;
-		private readonly IHubContext<NotificationHub> _notiContext;
         private readonly IHubContext<ReportHub> _reportContext;
         private readonly IEmailService _emailService;
         public QuestionsController(QasystemContext context, UserManager<User> userManager, IHubContext<QuestionHub> hubContext, IEmailService emailService, IHubContext<NotificationHub> notiContext, IHubContext<ReportHub> reportContext)

@@ -9,7 +9,7 @@ using QASystem.Services;
 
 namespace QASystem.Controllers
 {
-    [Authorize(Roles = "Admin,Moderator")]
+    [Authorize(Roles = "Admin")]
     public class AdminController : Controller
     {
         private readonly QasystemContext _context;
@@ -18,7 +18,12 @@ namespace QASystem.Controllers
         private readonly IHubContext<ReportHub> _reportContext;
         private readonly IEmailService _emailService;
 
-        public AdminController(QasystemContext context, UserManager<User> userManager, RoleManager<IdentityRole<int>> roleManager, IEmailService emailService, IHubContext<ReportHub> reportContext)
+        public AdminController(
+            QasystemContext context,
+            UserManager<User> userManager,
+            RoleManager<IdentityRole<int>> roleManager,
+            IEmailService emailService,
+            IHubContext<ReportHub> reportContext)
         {
             _context = context;
             _userManager = userManager;
@@ -29,20 +34,41 @@ namespace QASystem.Controllers
 
         // Hiển thị danh sách người dùng
         [Authorize(Roles = "Admin")]
-        public async Task<IActionResult> ManageUsers()
+        public async Task<IActionResult> ManageUsers(int page = 1, string sort = "asc")
         {
-            var users = await _userManager.Users.ToListAsync();
-            var userRoles = new Dictionary<int, IList<string>>();
-            var roles = await _roleManager.Roles.ToListAsync();
+            // Validate sort parameter
+            sort = sort.ToLower() == "desc" ? "desc" : "asc";
 
+            // Get users with sorting
+            var usersQuery = _userManager.Users.AsQueryable();
+            usersQuery = sort == "asc"
+                ? usersQuery.OrderBy(u => u.UserName)
+                : usersQuery.OrderByDescending(u => u.UserName);
+
+            // Pagination
+            const int pageSize = 4;
+            int totalUsers = await usersQuery.CountAsync();
+            int totalPages = (int)Math.Ceiling(totalUsers / (double)pageSize);
+            page = Math.Max(1, Math.Min(page, totalPages));
+
+            var users = await usersQuery
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync();
+
+            // Get roles for each user
+            var userRoles = new Dictionary<int, IList<string>>();
             foreach (var user in users)
             {
                 var rolesForUser = await _userManager.GetRolesAsync(user);
                 userRoles[user.Id] = rolesForUser;
             }
 
+            // Pass data to view
             ViewBag.UserRoles = userRoles;
-            ViewBag.AllRoles = roles;
+            ViewBag.CurrentPage = page;
+            ViewBag.TotalPages = totalPages;
+            ViewBag.Sort = sort;
             return View(users);
         }
 
@@ -118,6 +144,13 @@ namespace QASystem.Controllers
                 return RedirectToAction("ManageUsers");
             }
 
+            // Validate role
+            if (role != "Admin" && role != "User")
+            {
+                TempData["Error"] = "Invalid role. Only Admin or User roles are allowed.";
+                return RedirectToAction("ManageUsers");
+            }
+
             var currentUser = await _userManager.GetUserAsync(User);
             if (user.Id == currentUser.Id && role != "Admin")
             {
@@ -125,6 +158,7 @@ namespace QASystem.Controllers
                 return RedirectToAction("ManageUsers");
             }
 
+            // Remove current roles
             var currentRoles = await _userManager.GetRolesAsync(user);
             var removeResult = await _userManager.RemoveFromRolesAsync(user, currentRoles);
             if (!removeResult.Succeeded)
@@ -133,17 +167,15 @@ namespace QASystem.Controllers
                 return RedirectToAction("ManageUsers");
             }
 
-            if (!string.IsNullOrEmpty(role))
+            // Add new role
+            var addResult = await _userManager.AddToRoleAsync(user, role);
+            if (!addResult.Succeeded)
             {
-                var addResult = await _userManager.AddToRoleAsync(user, role);
-                if (!addResult.Succeeded)
-                {
-                    TempData["Error"] = "Failed to add role: " + string.Join(", ", addResult.Errors.Select(e => e.Description));
-                    return RedirectToAction("ManageUsers");
-                }
+                TempData["Error"] = "Failed to add role: " + string.Join(", ", addResult.Errors.Select(e => e.Description));
+                return RedirectToAction("ManageUsers");
             }
 
-            TempData["Success"] = $"Role for {user.UserName} updated successfully.";
+            TempData["Success"] = $"Role for {user.UserName} updated to {role}.";
             return RedirectToAction("ManageUsers");
         }
 
