@@ -173,6 +173,7 @@ namespace QASystem.Controllers
             return RedirectToAction("Details", new { id = questionId });
         }
 
+
         [HttpPost]
         [Authorize]
         [ValidateAntiForgeryToken]
