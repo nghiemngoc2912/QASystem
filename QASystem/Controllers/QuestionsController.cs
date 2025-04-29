@@ -248,6 +248,7 @@ namespace QASystem.Controllers
         }
 
         // Action chỉnh sửa câu hỏi
+
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> EditQuestion(int questionId, string title, string content, IFormFile image)
@@ -265,8 +266,15 @@ namespace QASystem.Controllers
                 return Forbid(); // Chỉ người tạo mới được chỉnh sửa
             }
 
-            question.Title = title;
-            question.Content = content;
+            // Kiểm tra Title và Content
+            if (string.IsNullOrWhiteSpace(title) || IsHtmlContentEmpty(content))
+            {
+                TempData["ErrorMessage"] = "Title và Content không được để trống.";
+                return RedirectToAction("Details", new { id = questionId });
+            }
+
+            question.Title = title.Trim();
+            question.Content = content.Trim();
 
             if (image != null)
             {
@@ -279,8 +287,25 @@ namespace QASystem.Controllers
             }
 
             await _context.SaveChangesAsync();
+            TempData["SuccessMessage"] = "Cập nhật câu hỏi thành công!";
             return RedirectToAction("Details", new { id = questionId });
         }
+
+        // Hàm phụ để kiểm tra content chỉ toàn HTML rỗng hoặc space
+        private bool IsHtmlContentEmpty(string html)
+        {
+            if (string.IsNullOrWhiteSpace(html))
+                return true;
+
+            // Xóa các thẻ HTML
+            string text = Regex.Replace(html, "<.*?>", string.Empty);
+
+            // Thay thế các ký tự không nhìn thấy như &nbsp; hoặc space
+            text = text.Replace("&nbsp;", "").Replace("\u00A0", "").Trim();
+
+            return string.IsNullOrWhiteSpace(text);
+        }
+
 
         // Action chỉnh sửa câu trả lời
         [HttpPost]

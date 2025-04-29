@@ -369,38 +369,23 @@
             </div>
 
             <!-- Modal chỉnh sửa câu hỏi -->
-            <div class="modal fade" id="editQuestionModal" tabindex="-1" aria-labelledby="editQuestionModalLabel" aria-hidden="true">
-                <div class="modal-dialog">
-                    <div class="modal-content">
-                        <div class="modal-header">
-                            <h5 class="modal-title" id="editQuestionModalLabel">Edit Question</h5>
-                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                        </div>
-                        <div class="modal-body">
-                            <form asp-controller="Questions" asp-action="EditQuestion" method="post" enctype="multipart/form-data">
-                                <input type="hidden" name="questionId" value="@Model.QuestionId" />
-                                <div class="mb-3">
-                                    <label for="title" class="form-label">Title</label>
-                                    <input type="text" name="title" id="title" class="form-control" value="@Model.Title" required />
-                                </div>
-                                <div class="mb-3">
-                                    <label for="content" class="form-label">Content</label>
-                                    <textarea name="content" id="content" class="form-control" rows="5">@Model.Content</textarea>
-                                </div>
-                                <div class="mb-3">
-                                    <label for="image" class="form-label">Upload New Image (optional)</label>
-                                    <input type="file" name="image" id="image" class="form-control" accept="image/*" />
-                                    @if (!string.IsNullOrEmpty(Model.ImageUrl))
-                                    {
-                                        <p>Current Image: <img src="@Model.ImageUrl" alt="Current Image" class="img-fluid mt-2" style="max-height: 100px;" /></p>
-                                    }
-                                </div>
-                                <button type="submit" class="btn btn-primary w-100">Save Changes</button>
-                            </form>
-                        </div>
-                    </div>
+            @Html.Partial("_EditQuestionModal", Model)
+            @if (TempData["ErrorMessage"] != null)
+            {
+                <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                    @TempData["ErrorMessage"]
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
                 </div>
-            </div>
+            }
+
+            @if (TempData["SuccessMessage"] != null)
+            {
+                <div class="alert alert-success alert-dismissible fade show" role="alert">
+                    @TempData["SuccessMessage"]
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            }
+
 
             <!-- Danh sách câu trả lời -->
             <h4 class="mb-3">Answers (<span id="total-answers">@totalAnswers</span>)</h4>
@@ -598,6 +583,19 @@
 </div>
 
 @section Scripts {
+    <!-- TinyMCE -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            tinymce.init({
+                selector: '#editQuestionContent',
+                height: 300,
+                plugins: 'advlist autolink lists link image charmap preview anchor searchreplace visualblocks code fullscreen insertdatetime media table paste code help wordcount',
+                toolbar: 'undo redo | formatselect | bold italic underline | alignleft aligncenter alignright alignjustify | bullist numlist outdent indent | link image | code preview',
+                menubar: false,
+                content_style: 'body { font-family:Helvetica,Arial,sans-serif; font-size:14px }'
+            });
+        });
+    </script>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" />
     <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/8.0. BastionHostSecurityGroup0/signalr.min.js"></script>
     <script>

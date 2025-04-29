@@ -1,0 +1,34 @@
+﻿@model QASystem.Models.Question
+
+<div class="modal fade" id="editQuestionModal" tabindex="-1" aria-labelledby="editQuestionModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="editQuestionModalLabel">Edit Question</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form asp-controller="Questions" asp-action="EditQuestion" method="post" enctype="multipart/form-data">
+                    <input type="hidden" name="questionId" value="@Model.QuestionId" />
+                    <div class="mb-3">
+                        <label for="title" class="form-label">Title</label>
+                        <input type="text" name="title" id="editQuestionTitle" class="form-control" value="@Model.Title" required />
+                    </div>
+                    <div class="mb-3">
+                        <label for="content" class="form-label">Content</label>
+                        <textarea name="content" id="editQuestionContent" class="form-control" rows="5">@Html.Raw(Model.Content)</textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label for="image" class="form-label">Upload New Image (optional)</label>
+                        <input type="file" name="image" id="editQuestionImage" class="form-control" accept="image/*" />
+                        @if (!string.IsNullOrEmpty(Model.ImageUrl))
+                        {
+                            <p>Current Image: <img src="@Model.ImageUrl" alt="Current Image" class="img-fluid mt-2" style="max-height: 100px;" /></p>
+                        }
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100">Save Changes</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
