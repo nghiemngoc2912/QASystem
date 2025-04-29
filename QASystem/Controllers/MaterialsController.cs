@@ -46,10 +46,10 @@ namespace QASystem.Controllers
                 material.Downloads = 0;
                 material.UserId = int.Parse(User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
                     ?? throw new UnauthorizedAccessException("User not authenticated."));
-
+                
                 _context.Materials.Add(material);
-                await _context.SaveChangesAsync();
-
+                var result =await _context.SaveChangesAsync();
+                Console.WriteLine($"SaveChangesAsync Result: {result}");
                 return RedirectToAction("Profile", "Account");
             }
             catch (UnauthorizedAccessException ex)
@@ -207,7 +207,6 @@ namespace QASystem.Controllers
 
                 _context.Update(existingMaterial);
                 await _context.SaveChangesAsync();
-
                 return RedirectToAction(nameof(Manage));
             }
             catch (Exception ex)

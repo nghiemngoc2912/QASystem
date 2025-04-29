@@ -237,5 +237,24 @@ namespace QASystem.Controllers
             TempData["Success"] = "Content has been disabled.";
             return RedirectToAction("ManageReports");
         }
+
+        // Hủy báo cáo
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> CancelReport(int reportId)
+        {
+            var report = await _context.Reports.FindAsync(reportId);
+            if (report == null)
+            {
+                TempData["Error"] = "Report not found.";
+                return RedirectToAction("ManageReports");
+            }
+
+            _context.Reports.Remove(report);
+            await _context.SaveChangesAsync();
+
+            TempData["Success"] = "Report has been canceled.";
+            return RedirectToAction("ManageReports");
+        }
     }
 }
