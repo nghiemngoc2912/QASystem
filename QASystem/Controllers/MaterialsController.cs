@@ -6,16 +6,23 @@ using System;
 using System.Threading.Tasks;
 using QASystem.ViewModels;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.SignalR;
+using QASystem.Hubs;
+using Microsoft.AspNetCore.Identity;
 
 namespace QASystem.Controllers
 {
     public class MaterialsController : Controller
     {
         private readonly QasystemContext _context;
+        private readonly UserManager<User> _userManager;
+        private readonly IHubContext<MaterialHub> _hubContext;
 
-        public MaterialsController(QasystemContext context)
+        public MaterialsController(QasystemContext context, UserManager<User> userManager, IHubContext<MaterialHub> hubContext)
         {
             _context = context;
+            _userManager = userManager;
+            _hubContext = hubContext;
         }
 
         [Authorize]
@@ -46,10 +53,10 @@ namespace QASystem.Controllers
                 material.Downloads = 0;
                 material.UserId = int.Parse(User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
                     ?? throw new UnauthorizedAccessException("User not authenticated."));
-
+                
                 _context.Materials.Add(material);
-                await _context.SaveChangesAsync();
-
+                var result =await _context.SaveChangesAsync();
+                await _hubContext.Clients.All.SendAsync("ReceiveMaterialUpdate", "Added", material.MaterialId);
                 return RedirectToAction("Profile", "Account");
             }
             catch (UnauthorizedAccessException ex)
@@ -143,6 +150,7 @@ namespace QASystem.Controllers
             {
                 _context.Materials.Remove(material);
                 await _context.SaveChangesAsync();
+                await _hubContext.Clients.All.SendAsync("ReceiveMaterialUpdate", "Deleted", id);
             }
             return RedirectToAction(nameof(Manage));
         }
@@ -157,6 +165,7 @@ namespace QASystem.Controllers
 
             material.Downloads++;
             await _context.SaveChangesAsync();
+            await _hubContext.Clients.All.SendAsync("ReceiveMaterialUpdate", "Downloaded", id);
 
             return Redirect(material.FileLink);
         }
@@ -207,7 +216,7 @@ namespace QASystem.Controllers
 
                 _context.Update(existingMaterial);
                 await _context.SaveChangesAsync();
-
+                await _hubContext.Clients.All.SendAsync("ReceiveMaterialUpdate", "Edited", existingMaterial.MaterialId);
                 return RedirectToAction(nameof(Manage));
             }
             catch (Exception ex)
@@ -224,6 +233,175 @@ namespace QASystem.Controllers
 
             ViewBag.UserId = userId;
             return View(materials);
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> Index(string searchTerm = "", string sortOrder = "date_desc", int pageNumber = 1)
+        {
+            var viewModel = new MaterialListViewModel
+            {
+                SearchTerm = searchTerm,
+                SortOrder = sortOrder,
+                PageNumber = pageNumber
+            };
+
+            var query = _context.Materials
+                .Include(m => m.User)
+                .AsQueryable();
+
+            if (!string.IsNullOrEmpty(searchTerm))
+            {
+                searchTerm = searchTerm.ToLower();
+                query = query.Where(m => m.Title.ToLower().Contains(searchTerm) ||
+                                        m.Description.ToLower().Contains(searchTerm));
+            }
+
+            switch (sortOrder)
+            {
+                case "date_asc":
+                    query = query.OrderBy(m => m.CreatedAt);
+                    break;
+                case "downloads_desc":
+                    query = query.OrderByDescending(m => m.Downloads);
+                    break;
+                case "downloads_asc":
+                    query = query.OrderBy(m => m.Downloads);
+                    break;
+                case "date_desc":
+                default:
+                    query = query.OrderByDescending(m => m.CreatedAt);
+                    break;
+            }
+
+            viewModel.TotalItems = await query.CountAsync();
+
+            var materials = await query
+                .Skip((pageNumber - 1) * viewModel.PageSize)
+                .Take(viewModel.PageSize)
+                .ToListAsync();
+
+            viewModel.Materials = materials;
+
+            var topMaterials = await _context.Materials
+                .Include(m => m.User)
+                .OrderByDescending(m => m.Downloads)
+                .Take(5)
+                .ToListAsync();
+
+            ViewBag.TopMaterials = topMaterials;
+
+            return View(viewModel);
+        }
+
+        [Authorize]
+        [HttpGet]
+        public async Task<IActionResult> GetManageMaterialsPartial(string searchTerm = "", string sortOrder = "desc", int pageNumber = 1)
+        {
+            if (!User.Identity.IsAuthenticated)
+            {
+                return Unauthorized();
+            }
+            var userId = int.Parse(User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value);
+
+            var viewModel = new MaterialListViewModel
+            {
+                SearchTerm = searchTerm,
+                SortOrder = sortOrder,
+                PageNumber = pageNumber
+            };
+
+            var query = _context.Materials
+                .Where(m => m.UserId == userId)
+                .Include(m => m.User)
+                .AsQueryable();
+
+            if (!string.IsNullOrEmpty(searchTerm))
+            {
+                searchTerm = searchTerm.ToLower();
+                query = query.Where(m => m.Title.ToLower().Contains(searchTerm) ||
+                                        m.Description.ToLower().Contains(searchTerm));
+            }
+
+            if (sortOrder == "asc")
+            {
+                query = query.OrderBy(m => m.CreatedAt);
+            }
+            else
+            {
+                query = query.OrderByDescending(m => m.CreatedAt);
+            }
+
+            viewModel.TotalItems = await query.CountAsync();
+
+            var materials = await query
+                .Skip((pageNumber - 1) * viewModel.PageSize)
+                .Take(viewModel.PageSize)
+                .ToListAsync();
+
+            viewModel.Materials = materials;
+
+            return PartialView("_ManageMaterialsListPartial", viewModel);
+        }
+        [HttpGet]
+        public async Task<IActionResult> GetMaterialsPartial(string searchTerm = "", string sortOrder = "date_desc", int pageNumber = 1)
+        {
+            var viewModel = new MaterialListViewModel
+            {
+                SearchTerm = searchTerm,
+                SortOrder = sortOrder,
+                PageNumber = pageNumber
+            };
+
+            var query = _context.Materials
+                .Include(m => m.User)
+                .AsQueryable();
+
+            if (!string.IsNullOrEmpty(searchTerm))
+            {
+                searchTerm = searchTerm.ToLower();
+                query = query.Where(m => m.Title.ToLower().Contains(searchTerm) ||
+                                        m.Description.ToLower().Contains(searchTerm));
+            }
+
+            switch (sortOrder)
+            {
+                case "date_asc":
+                    query = query.OrderBy(m => m.CreatedAt);
+                    break;
+                case "downloads_desc":
+                    query = query.OrderByDescending(m => m.Downloads);
+                    break;
+                case "downloads_asc":
+                    query = query.OrderBy(m => m.Downloads);
+                    break;
+                case "date_desc":
+                default:
+                    query = query.OrderByDescending(m => m.CreatedAt);
+                    break;
+            }
+
+            viewModel.TotalItems = await query.CountAsync();
+
+            var materials = await query
+                .Skip((pageNumber - 1) * viewModel.PageSize)
+                .Take(viewModel.PageSize)
+                .ToListAsync();
+
+            viewModel.Materials = materials;
+
+            return PartialView("_MaterialsListPartial", viewModel);
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetTopMaterialsPartial()
+        {
+            var topMaterials = await _context.Materials
+                .Include(m => m.User)
+                .OrderByDescending(m => m.Downloads)
+                .Take(5)
+                .ToListAsync();
+
+            return PartialView("_TopMaterialsPartial", topMaterials);
         }
     }
 }

@@ -2,7 +2,7 @@
 
 <h2>Edit Material</h2>
 
-<form id="materialForm" method="post" novalidate>
+<form id="materialForm" method="post" asp-action="Edit" asp-controller="Materials" enctype="multipart/form-data" novalidate>
     <div asp-validation-summary="All" class="text-danger"></div>
 
     <input type="hidden" asp-for="MaterialId" />
@@ -107,35 +107,6 @@
             }
         });
 
-        document.getElementById('materialForm').addEventListener('submit', async (event) => {
-            event.preventDefault();
 
-            const form = event.target;
-            const formData = new FormData(form);
-            const cvLink = document.getElementById('cvLink').value;
-
-            if (!cvLink) {
-                alert("Please upload a file or keep the current file.");
-                return;
-            }
-
-            try {
-                const response = await fetch(`/Materials/Edit/${@Model.MaterialId}`, {
-                    method: 'POST',
-                    body: formData
-                });
-
-                if (response.ok) {
-                    window.location.href = '/Materials/Manage';
-                } else {
-                    const errorText = await response.text();
-                    console.error("Error submitting form:", errorText);
-                    alert("Failed to update material: " + errorText);
-                }
-            } catch (error) {
-                console.error("Error submitting form:", error);
-                alert("An error occurred while updating the material.");
-            }
-        });
     </script>
 }

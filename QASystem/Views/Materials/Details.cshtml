@@ -1,4 +1,6 @@
 ﻿@model QASystem.Models.Material
+@using Microsoft.AspNetCore.Identity
+@inject UserManager<User> UserManager
 
 <div class="container mt-5">
     <h2 class="text-center mb-4">Material Details</h2>
@@ -20,13 +22,31 @@
 
                 <dt class="col-sm-4">File:</dt>
                 <dd class="col-sm-8">
-                    <a href="@Model.FileLink" target="_blank" class="btn btn-sm btn-outline-primary">View File</a>
+                    <a asp-action="Download" asp-route-id="@Model.MaterialId" class="btn btn-sm btn-outline-primary" target="_blank">
+                        <i class="bi bi-download"></i> Download
+                    </a>
                 </dd>
             </dl>
         </div>
         <div class="card-footer text-center bg-light">
-            <a asp-action="Edit" asp-route-id="@Model.MaterialId" class="btn btn-warning me-2">Edit</a>
-            <a asp-action="Manage" class="btn btn-secondary">Back to List</a>
+            @{
+                var currentUser = await UserManager.GetUserAsync(User);
+                var isOwner = currentUser != null && currentUser.Id == Model.UserId;
+            }
+            @if (isOwner)
+            {
+                <a asp-action="Edit" asp-route-id="@Model.MaterialId" class="btn btn-warning me-2">Edit</a>
+                <a asp-action="Manage" class="btn btn-secondary">Back to Manage</a>
+                <a asp-action="Index" class="btn btn-secondary">Back to List</a>
+            }
+            else
+            {
+                <a asp-action="Index" class="btn btn-secondary">Back to List</a>
+            }
         </div>
     </div>
 </div>
+
+@section Scripts {
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" />
+}

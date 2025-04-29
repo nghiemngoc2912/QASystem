@@ -1,0 +1,52 @@
+﻿@model List<QASystem.Models.Material>
+@using Microsoft.AspNetCore.Identity
+@inject UserManager<User> UserManager
+
+@if (Model != null && Model.Any())
+{
+    @foreach (var material in Model)
+    {
+        <div class="card shadow-sm mb-3">
+            <div class="card-body">
+                <div class="d-flex align-items-center mb-2">
+                    <img src="@(material.User?.AvatarUrl ?? "/images/default-avatar.png")" alt="Avatar" class="rounded-circle me-2" style="width: 40px; height: 40px;" />
+                    <p class="text-muted mb-0">
+                        Posted by
+                        <strong>
+                            @if (material.User != null)
+                            {
+                                var currentUser = await UserManager.GetUserAsync(User);
+                                var isCurrentUser = currentUser != null && currentUser.Id == material.User.Id;
+                                <a asp-controller="Account"
+                                   asp-action="@(isCurrentUser ? "Profile" : "PublicProfile")"
+                                   asp-route-id="@material.User.Id"
+                                   class="text-decoration-none"
+                                   style="color: black;">
+                                    @material.User.UserName
+                                </a>
+                            }
+                            else
+                            {
+                                <span>Unknown User</span>
+                            }
+                        </strong>
+                    </p>
+                </div>
+                <h6 class="card-title">
+                    <a asp-controller="Materials" asp-action="Details" asp-route-id="@material.MaterialId" class="text-decoration-none">
+                        @material.Title
+                    </a>
+                </h6>
+                <p class="text-muted small">
+                    Downloads: @material.Downloads
+                    <br />
+                    Posted on @material.CreatedAt.ToString("dd/MM/yyyy HH:mm")
+                </p>
+            </div>
+        </div>
+    }
+}
+else
+{
+    <p class="text-muted">No top downloaded materials yet.</p>
+}

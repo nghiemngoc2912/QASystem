@@ -1,0 +1,76 @@
+﻿@model QASystem.ViewModels.MaterialListViewModel
+@using Microsoft.AspNetCore.Identity
+@inject UserManager<User> UserManager
+
+@if (Model.Materials.Any())
+{
+    @foreach (var material in Model.Materials)
+    {
+        <div class="card shadow-sm mb-3">
+            <div class="card-body">
+                <div class="d-flex align-items-center mb-2">
+                    <img src="@(material.User?.AvatarUrl ?? "/images/default-avatar.png")" alt="Avatar" class="rounded-circle me-2" style="width: 40px; height: 40px;" />
+                    <p class="text-muted mb-0">
+                        Posted by
+                        <strong>
+                            @if (material.User != null)
+                            {
+                                var currentUser = await UserManager.GetUserAsync(User);
+                                var isCurrentUser = currentUser != null && currentUser.Id == material.User.Id;
+                                <a asp-controller="Account"
+                                   asp-action="@(isCurrentUser ? "Profile" : "PublicProfile")"
+                                   asp-route-id="@material.User.Id"
+                                   class="text-decoration-none"
+                                   style="color: black;">
+                                    @material.User.UserName
+                                </a>
+                            }
+                            else
+                            {
+                                <span>Unknown User</span>
+                            }
+                        </strong>
+                        on @material.CreatedAt.ToString("dd/MM/yyyy HH:mm")
+                    </p>
+                </div>
+                <div class="d-flex justify-content-between align-items-center">
+                    <h5 class="card-title mb-0">
+                        <a asp-controller="Materials" asp-action="Details" asp-route-id="@material.MaterialId" class="text-decoration-none">
+                            @material.Title
+                        </a>
+                    </h5>
+                    <div class="text-muted small">
+                        <span><i class="bi bi-download"></i> @material.Downloads</span>
+                    </div>
+                </div>
+                <p class="card-text text-truncate mt-2" title="@material.Description">@material.Description</p>
+                <div class="text-end">
+                    <a asp-action="Download" asp-route-id="@material.MaterialId" class="btn btn-sm btn-outline-success" target="_blank">
+                        <i class="bi bi-download"></i> Download
+                    </a>
+                </div>
+            </div>
+        </div>
+    }
+
+    <nav aria-label="Materials pagination">
+        <ul class="pagination justify-content-center">
+            <li class="page-item @(Model.PageNumber == 1 ? "disabled" : "")">
+                <a class="page-link" asp-action="Index" asp-route-pageNumber="@(Model.PageNumber - 1)" asp-route-searchTerm="@Model.SearchTerm" asp-route-sortOrder="@Model.SortOrder">Previous</a>
+            </li>
+            @for (int i = 1; i <= Model.TotalPages; i++)
+            {
+                <li class="page-item @(i == Model.PageNumber ? "active" : "")">
+                    <a class="page-link" asp-action="Index" asp-route-pageNumber="@i" asp-route-searchTerm="@Model.SearchTerm" asp-route-sortOrder="@Model.SortOrder">@i</a>
+                </li>
+            }
+            <li class="page-item @(Model.PageNumber == Model.TotalPages ? "disabled" : "")">
+                <a class="page-link" asp-action="Index" asp-route-pageNumber="@(Model.PageNumber + 1)" asp-route-searchTerm="@Model.SearchTerm" asp-route-sortOrder="@Model.SortOrder">Next</a>
+            </li>
+        </ul>
+    </nav>
+}
+else
+{
+    <p class="text-muted">No materials found.</p>
+}
