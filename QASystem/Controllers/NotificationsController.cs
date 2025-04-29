@@ -181,6 +181,26 @@ namespace QASystem.Controllers
             }
         }
 
+        [HttpPost]
+        public async Task<IActionResult> Delete(List<int> selectedIds)
+        {
+            if (selectedIds == null || !selectedIds.Any())
+                return RedirectToAction("Index");
+
+            var user = await _userManager.GetUserAsync(User);
+
+            var notifications = await _context.Notifications
+                .Where(n => selectedIds.Contains(n.NotificationId) && n.UserId == user.Id)
+                .ToListAsync();
+
+            _context.Notifications.RemoveRange(notifications);
+            await _context.SaveChangesAsync();
+
+            await _notiContext.Clients.Group(user.Id.ToString()).SendAsync("NewNotification");
+
+            return RedirectToAction("Index");
+        }
+
 
     }
 
