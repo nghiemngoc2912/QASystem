@@ -1,0 +1,239 @@
+﻿@{
+    ViewData["Title"] = "Gemini AI Chat";
+}
+
+<div class="container mt-5">
+    <h2 class="text-center mb-4">ChatAI QA system</h2>
+
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <div id="chat-container" class="border rounded p-3 mb-3" style="height: 400px; overflow-y: auto; background-color: #f8f9fa;">
+                <!-- Tin nhắn sẽ được thêm động bằng JavaScript -->
+            </div>
+            <form id="chat-form">
+                <div class="input-group">
+                    <textarea class="form-control" id="prompt" name="prompt" rows="2" placeholder="Nhập câu hỏi của bạn..." required></textarea>
+                    <button type="submit" class="btn btn-primary">Gửi</button>
+                </div>
+            </form>
+            <button type="button" class="btn btn-secondary mt-2" onclick="clearChat()">Xóa lịch sử chat</button>
+        </div>
+    </div>
+</div>
+
+<style>
+    .message-user {
+        display: flex;
+        justify-content: flex-end;
+        margin-bottom: 15px;
+    }
+
+    .message-bot {
+        display: flex;
+        justify-content: flex-start;
+        margin-bottom: 15px;
+    }
+
+    .message-content {
+        max-width: 70%;
+        padding: 10px 15px;
+        border-radius: 15px;
+        word-break: break-word;
+    }
+
+    .message-user .message-content {
+        background-color: #007bff;
+        color: white;
+        border-bottom-right-radius: 5px;
+    }
+
+    .message-bot .message-content {
+        background-color: #6c757d;
+        color: white;
+        border-bottom-left-radius: 5px;
+    }
+
+    /* Định dạng cho nội dung Markdown */
+    .message-content h1, .message-content h2, .message-content h3 {
+        margin: 0.5em 0;
+        font-weight: bold;
+    }
+
+    .message-content p {
+        margin: 0.5em 0;
+    }
+
+    .message-content ul, .message-content ol {
+        margin: 0.5em 0;
+        padding-left: 20px;
+    }
+</style>
+
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script>
+        // Khởi tạo các biến chính
+        let chatContainer, chatForm, promptInput;
+        const userId = '@ViewData["UserId"]'; // Lấy ID người dùng từ ViewData
+
+        // Hàm khởi tạo các biến và sự kiện
+        function initChat() {
+            chatContainer = document.getElementById('chat-container');
+            chatForm = document.getElementById('chat-form');
+            promptInput = document.getElementById('prompt');
+
+            // Đăng ký sự kiện cho form
+            if (chatForm) {
+                chatForm.addEventListener('submit', sendMessage);
+            }
+
+            // Đăng ký sự kiện cho nút xóa lịch sử
+            const clearButton = document.querySelector('button[onclick="clearChat()"]');
+            if (clearButton) {
+                clearButton.onclick = clearChat;
+            }
+
+            // Tải lịch sử chat theo userId khi đăng nhập
+            loadChatHistory();
+
+            // Kiểm tra và xử lý prompt từ trang chi tiết
+            checkStoredPrompt();
+        }
+
+        // Kiểm tra và xử lý prompt được lưu từ trang chi tiết
+        async function checkStoredPrompt() {
+            const prompt = localStorage.getItem('chatAIPrompt');
+            if (prompt) {
+                processPrompt(prompt);
+                localStorage.removeItem('chatAIPrompt');
+            }
+        }
+
+        // Xử lý prompt (dùng chung cho cả form submit và dữ liệu từ localStorage)
+        async function processPrompt(prompt) {
+            addMessage(prompt, true);
+            saveMessage(prompt, true);
+
+            const botMessageElement = addMessage('Đang xử lý...', false);
+
+            try {
+                const response = await fetch('/Gemini/GenerateAjax', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ prompt })
+                });
+
+                const data = await response.json();
+                if (data.success) {
+                    botMessageElement.querySelector('.message-content').innerHTML = marked.parse(data.result);
+                    saveMessage(data.result, false);
+                } else {
+                    botMessageElement.querySelector('.message-content').textContent = `Lỗi: ${data.error}`;
+                    saveMessage(`Lỗi: ${data.error}`, false);
+                }
+            } catch (error) {
+                botMessageElement.querySelector('.message-content').textContent = `Lỗi kết nối: ${error.message}`;
+                saveMessage(`Lỗi kết nối: ${error.message}`, false);
+            }
+        }
+
+        // Tải lịch sử chat từ localStorage theo userId
+        function loadChatHistory() {
+            const historyKey = `chatHistory_${userId}`;
+            const history = JSON.parse(localStorage.getItem(historyKey)) || [];
+            history.forEach(msg => {
+                addMessage(msg.content, msg.isUser);
+            });
+        }
+
+        // Lưu tin nhắn vào localStorage theo userId
+        function saveMessage(content, isUser) {
+            const historyKey = `chatHistory_${userId}`;
+            const history = JSON.parse(localStorage.getItem(historyKey)) || [];
+            history.push({ content, isUser });
+            localStorage.setItem(historyKey, JSON.stringify(history));
+        }
+
+        // Xóa lịch sử chat theo userId
+        function clearChat() {
+            const historyKey = `chatHistory_${userId}`;
+            localStorage.removeItem(historyKey);
+            chatContainer.innerHTML = '';
+        }
+
+        // Thêm tin nhắn vào giao diện
+        function addMessage(content, isUser = false) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = isUser ? 'message-user' : 'message-bot';
+            const messageContent = document.createElement('span');
+            messageContent.className = 'message-content';
+
+            // Hiển thị nội dung an toàn tránh XSS
+            if (isUser) {
+                messageContent.textContent = content;
+            } else {
+                messageContent.innerHTML = marked.parse(content);
+            }
+
+            // Thêm hiệu ứng animation
+            messageDiv.style.opacity = '0';
+            messageDiv.style.transform = 'translateY(10px)';
+            messageDiv.style.transition = 'all 0.3s ease';
+
+            messageDiv.appendChild(messageContent);
+            chatContainer.appendChild(messageDiv);
+
+            // Kích hoạt animation
+            setTimeout(() => {
+                messageDiv.style.opacity = '1';
+                messageDiv.style.transform = 'translateY(0)';
+            }, 10);
+
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+            return messageDiv;
+        }
+
+        // Xử lý gửi tin nhắn
+        async function sendMessage(event) {
+            event.preventDefault();
+            const prompt = promptInput.value.trim();
+
+            if (!prompt) {
+                alert('Vui lòng nhập câu hỏi!');
+                return;
+            }
+
+            // Vô hiệu hóa form trong quá trình xử lý
+            const submitButton = chatForm.querySelector('button[type="submit"]');
+            submitButton.disabled = true;
+            submitButton.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Đang gửi...';
+
+            // Lưu giá trị trước khi reset form
+            const userPrompt = prompt;
+            promptInput.value = '';
+
+            // Xử lý prompt
+            await processPrompt(userPrompt);
+
+            // Kích hoạt lại form
+            submitButton.disabled = false;
+            submitButton.textContent = 'Gửi';
+        }
+
+        // Xử lý khi click "Chat AI" từ trang chi tiết
+        function handleChatAIClick(title, content) {
+            const prompt = `Tiêu đề: ${title}\nNội dung: ${content}`;
+            localStorage.setItem('chatAIPrompt', prompt);
+            window.location.href = '/Gemini/Index';
+        }
+
+        // Khởi tạo khi trang đã load xong
+        document.addEventListener('DOMContentLoaded', function () {
+            if (window.location.pathname === '/Gemini/Index') {
+                initChat();
+            }
+        });
+    </script>
+}

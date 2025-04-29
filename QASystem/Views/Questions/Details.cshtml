@@ -308,11 +308,14 @@
                                 </p>
                             </div>
                             <div class="mt-2">
-                                <button type="button" class="btn btn-sm btn-outline-info ms-2">
+                                @*<button id="chatAIButton" type="button" class="btn btn-sm btn-outline-info ms-2">
                                     <i class="bi bi-chat-dots"></i> Chat AI
-                                </button>
+                                </button> *@
                                 @if (User.Identity.IsAuthenticated)
                                 {
+                                    <button id="chatAIButton" type="button" class="btn btn-sm btn-outline-info ms-2">
+                                        <i class="bi bi-chat-dots"></i> Chat AI
+                                    </button>
                                     @if (Model.UserId.ToString() != currentUserId)
                                     {
                                         <button type="button" class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#reportModal"
@@ -686,5 +689,21 @@
         connection.start().then(() => {
             connection.invoke("JoinQuestionGroup", @Model.QuestionId).catch(err => console.error(err));
         }).catch(err => console.error(err));
+
+
+        document.addEventListener('DOMContentLoaded', () => {
+
+            const chatAIButton = document.getElementById('chatAIButton');
+
+            chatAIButton.addEventListener('click', () => {
+                const title = document.querySelector('.card-title')?.textContent.trim() || '';
+                const content = document.querySelector('.card-text')?.textContent.trim() || '';
+                const prompt = `Tiêu đề: ${title}\nNội dung: ${content}`;
+                localStorage.setItem('chatAIPrompt', prompt);
+                window.location.href = '/Gemini/Index';
+            });
+        });
+
+
     </script>
 }

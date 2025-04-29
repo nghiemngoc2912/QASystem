@@ -39,6 +39,15 @@ builder.Services.AddSession(options =>
 builder.Services.Configure<EmailSettings>(builder.Configuration.GetSection("EmailSettings"));
 builder.Services.AddScoped<IEmailService, EmailService>();
 
+// Thêm HttpClient và GeminiService
+builder.Services.AddHttpClient<GeminiService>();
+builder.Services.AddScoped<GeminiService>();
+
+// Cấu hình GeminiSettings từ appsettings.json
+builder.Services.Configure<GeminiSettings>(
+    builder.Configuration.GetSection("GeminiSettings"));
+
+
 var app = builder.Build();
 
 // Cấu hình middleware
