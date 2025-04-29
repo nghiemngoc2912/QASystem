@@ -202,36 +202,6 @@
                                 </div>
                             </div>
 
-                            <!-- Modal chỉnh sửa câu trả lời -->
-                            <div class="modal fade" id="editAnswerModal_@answer.AnswerId" tabindex="-1" aria-labelledby="editAnswerModalLabel_@answer.AnswerId" aria-hidden="true">
-                                <div class="modal-dialog">
-                                    <div class="modal-content">
-                                        <div class="modal-header">
-                                            <h5 class="modal-title" id="editAnswerModalLabel_@answer.AnswerId">Edit Answer</h5>
-                                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                                        </div>
-                                        <div class="modal-body">
-                                            <form asp-controller="Questions" asp-action="EditAnswer" method="post" enctype="multipart/form-data">
-                                                <input type="hidden" name="answerId" value="@answer.AnswerId" />
-                                                <input type="hidden" name="questionId" value="@Model.QuestionId" />
-                                                <div class="mb-3">
-                                                    <label for="content_@answer.AnswerId" class="form-label">Content</label>
-                                                    <textarea name="content" id="content_@answer.AnswerId" class="form-control" rows="5">@answer.Content</textarea>
-                                                </div>
-                                                <div class="mb-3">
-                                                    <label for="image_@answer.AnswerId" class="form-label">Upload New Image (optional)</label>
-                                                    <input type="file" name="image" id="image_@answer.AnswerId" class="form-control" accept="image/*" />
-                                                    @if (!string.IsNullOrEmpty(answer.ImageUrl))
-                                                    {
-                                                        <p>Current Image: <img src="@answer.ImageUrl" alt="Current Image" class="img-fluid mt-2" style="max-height: 100px;" /></p>
-                                                    }
-                                                </div>
-                                                <button type="submit" class="btn btn-primary w-100">Save Changes</button>
-                                            </form>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
                         }
                         <nav aria-label="Answers pagination">
                             <ul class="pagination justify-content-center">
@@ -490,7 +460,7 @@
                                             <input type="hidden" name="questionId" value="@Model.QuestionId" />
                                             <div class="mb-3">
                                                 <label for="content_@answer.AnswerId" class="form-label">Content</label>
-                                                <textarea name="content" id="content_@answer.AnswerId" class="form-control" rows="5">@answer.Content</textarea>
+                                                <textarea name="content" id="content_@answer.AnswerId" class="form-control tiny-editor" rows="5">@answer.Content</textarea>
                                             </div>
                                             <div class="mb-3">
                                                 <label for="image_@answer.AnswerId" class="form-label">Upload New Image (optional)</label>
@@ -587,7 +557,7 @@
     <script>
         document.addEventListener('DOMContentLoaded', function () {
             tinymce.init({
-                selector: '#editQuestionContent',
+                selector: '.tiny-editor',
                 height: 300,
                 plugins: 'advlist autolink lists link image charmap preview anchor searchreplace visualblocks code fullscreen insertdatetime media table paste code help wordcount',
                 toolbar: 'undo redo | formatselect | bold italic underline | alignleft aligncenter alignright alignjustify | bullist numlist outdent indent | link image | code preview',

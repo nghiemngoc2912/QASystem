@@ -16,7 +16,7 @@
                     </div>
                     <div class="mb-3">
                         <label for="content" class="form-label">Content</label>
-                        <textarea name="content" id="editQuestionContent" class="form-control" rows="5">@Html.Raw(Model.Content)</textarea>
+                        <textarea name="content" class="form-control tiny-editor" rows="5">@Model.Content</textarea>
                     </div>
                     <div class="mb-3">
                         <label for="image" class="form-label">Upload New Image (optional)</label>
