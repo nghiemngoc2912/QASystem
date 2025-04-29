@@ -75,7 +75,6 @@
     {
         <button type="submit" class="btn btn-success mb-3" onclick="setAction('read')">Đánh dấu là đã đọc</button>
         <button type="submit" class="btn btn-warning mb-3" onclick="setAction('unread')">Đánh dấu là chưa đọc</button>
-        <button type="button" class="btn btn-danger mb-3" onclick="deleteSelected()">Xóa</button>
     }
 </form>
 
@@ -101,15 +100,6 @@ else
         function setAction(type) {
             document.getElementById("actionType").value = type;
         }
-
-        function deleteSelected() {
-            if (confirm("Bạn có chắc chắn muốn xóa các thông báo đã chọn không?")) {
-                var form = document.getElementById("bulkForm");
-                form.action = '@Url.Action("Delete", "Notifications")';
-                form.submit();
-            }
-        }
-
     </script>
 }
 
