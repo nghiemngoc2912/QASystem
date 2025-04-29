@@ -135,7 +135,7 @@ namespace QASystem.Controllers
                 {
                     await image.CopyToAsync(stream);
                 }
-                question.ImageUrl = "/images/questions" + fileName;
+                question.ImageUrl = "/images/questions/" + fileName;
             }
 
             _context.Questions.Add(question);

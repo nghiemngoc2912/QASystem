@@ -111,12 +111,12 @@ namespace QASystem.Controllers
 
             if (image != null)
             {
-                var filePath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot/uploads", image.FileName);
+                var filePath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot/images/comments", image.FileName);
                 using (var stream = new FileStream(filePath, FileMode.Create))
                 {
                     await image.CopyToAsync(stream);
                 }
-                answer.ImageUrl = "/uploads/" + image.FileName;
+                answer.ImageUrl = "/images/comments/" + image.FileName;
             }
 
             _context.Answers.Add(answer);
@@ -169,7 +169,7 @@ namespace QASystem.Controllers
                 return RedirectToAction("Details", new { id = questionId ?? (await _context.Answers.FindAsync(answerId))?.QuestionId ?? 0 });
             }
 
-            if (string.IsNullOrEmpty(reason))
+            if (string.IsNullOrWhiteSpace(reason))
             {
                 TempData["Error"] = "Reason for reporting is required.";
                 return RedirectToAction("Details", new { id = questionId ?? (await _context.Answers.FindAsync(answerId)).QuestionId });
